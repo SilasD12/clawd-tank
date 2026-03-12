@@ -1,6 +1,7 @@
 #include "sim_events.h"
 #include "ble_service.h"
 #include "ui_manager.h"
+#include "config_store.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -98,6 +99,28 @@ void sim_events_init_inline(const char *events_str)
             ble_evt_t evt = { .type = BLE_EVT_NOTIF_CLEAR };
             add_event(current_time, &evt, "clear");
             p += 5;
+        }
+        else if (strncmp(p, "config", 6) == 0) {
+            p += 6;
+            char json_str[256];
+            p = parse_quoted(p, json_str, sizeof(json_str));
+
+            /* Parse and apply config directly */
+            cJSON *json = cJSON_Parse(json_str);
+            if (json) {
+                cJSON *brightness = cJSON_GetObjectItem(json, "brightness");
+                if (brightness && cJSON_IsNumber(brightness)) {
+                    config_store_set_brightness((uint8_t)brightness->valueint);
+                    printf("[sim] Config: brightness=%d\n", brightness->valueint);
+                }
+                cJSON *sleep_t = cJSON_GetObjectItem(json, "sleep_timeout");
+                if (sleep_t && cJSON_IsNumber(sleep_t)) {
+                    config_store_set_sleep_timeout((uint16_t)sleep_t->valueint);
+                    ui_manager_set_sleep_timeout((uint32_t)sleep_t->valueint * 1000);
+                    printf("[sim] Config: sleep_timeout=%d\n", sleep_t->valueint);
+                }
+                cJSON_Delete(json);
+            }
         }
         else if (strncmp(p, "notify", 6) == 0) {
             p += 6;

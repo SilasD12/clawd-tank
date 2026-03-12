@@ -30,6 +30,7 @@ add_executable(clawd-tank-sim
     ${FIRMWARE_DIR}/notification_ui.c
     ${FIRMWARE_DIR}/ui_manager.c
     ${FIRMWARE_DIR}/notification.c
+    ${FIRMWARE_DIR}/config_store.c
 )
 
 # Include path order matters:
