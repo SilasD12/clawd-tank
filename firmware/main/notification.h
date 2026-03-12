@@ -3,6 +3,7 @@
 #define NOTIFICATION_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #define NOTIF_MAX_COUNT    8
 #define NOTIF_MAX_ID_LEN   48
@@ -13,12 +14,14 @@ typedef struct {
     char id[NOTIF_MAX_ID_LEN];
     char project[NOTIF_MAX_PROJ_LEN];
     char message[NOTIF_MAX_MSG_LEN];
+    uint32_t seq;
     bool active;
 } notification_t;
 
 typedef struct {
     notification_t items[NOTIF_MAX_COUNT];
     int count;
+    uint32_t next_seq;
 } notification_store_t;
 
 void notif_store_init(notification_store_t *store);

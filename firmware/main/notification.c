@@ -26,40 +26,47 @@ static int find_free_slot(const notification_store_t *store) {
     return -1;
 }
 
-// Find oldest active slot (lowest index). Returns index or -1.
+// Find oldest active slot (lowest seq). Returns index or -1.
 static int find_oldest(const notification_store_t *store) {
+    int oldest = -1;
+    uint32_t min_seq = UINT32_MAX;
     for (int i = 0; i < NOTIF_MAX_COUNT; i++) {
-        if (store->items[i].active) {
-            return i;
+        if (store->items[i].active && store->items[i].seq < min_seq) {
+            min_seq = store->items[i].seq;
+            oldest = i;
         }
     }
-    return -1;
+    return oldest;
 }
 
 static void write_slot(notification_t *slot, const char *id,
-                        const char *project, const char *message) {
+                        const char *project, const char *message,
+                        uint32_t seq) {
     strncpy(slot->id, id, NOTIF_MAX_ID_LEN - 1);
     slot->id[NOTIF_MAX_ID_LEN - 1] = '\0';
     strncpy(slot->project, project, NOTIF_MAX_PROJ_LEN - 1);
     slot->project[NOTIF_MAX_PROJ_LEN - 1] = '\0';
     strncpy(slot->message, message, NOTIF_MAX_MSG_LEN - 1);
     slot->message[NOTIF_MAX_MSG_LEN - 1] = '\0';
+    slot->seq = seq;
     slot->active = true;
 }
 
 int notif_store_add(notification_store_t *store,
                     const char *id, const char *project, const char *message) {
+    uint32_t seq = store->next_seq++;
+
     // Update existing?
     int idx = find_by_id(store, id);
     if (idx >= 0) {
-        write_slot(&store->items[idx], id, project, message);
+        write_slot(&store->items[idx], id, project, message, seq);
         return 0;
     }
 
     // Find free slot
     idx = find_free_slot(store);
     if (idx >= 0) {
-        write_slot(&store->items[idx], id, project, message);
+        write_slot(&store->items[idx], id, project, message, seq);
         store->count++;
         return 0;
     }
@@ -67,7 +74,7 @@ int notif_store_add(notification_store_t *store,
     // Full — drop oldest
     idx = find_oldest(store);
     if (idx >= 0) {
-        write_slot(&store->items[idx], id, project, message);
+        write_slot(&store->items[idx], id, project, message, seq);
         // count stays the same (replaced one)
         return 0;
     }
@@ -79,7 +86,6 @@ int notif_store_dismiss(notification_store_t *store, const char *id) {
     int idx = find_by_id(store, id);
     if (idx < 0) return -1;
 
-    store->items[idx].active = false;
     memset(&store->items[idx], 0, sizeof(notification_t));
     store->count--;
     return 0;
