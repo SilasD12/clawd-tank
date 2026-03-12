@@ -1,6 +1,7 @@
 """Clawd Tank daemon — bridges Claude Code hooks to ESP32 via BLE."""
 
 import asyncio
+import fcntl
 import logging
 import os
 import signal
@@ -14,6 +15,20 @@ from .socket_server import SocketServer
 logger = logging.getLogger("clawd-tank")
 
 PID_PATH = Path.home() / ".clawd-tank" / "daemon.pid"
+LOCK_PATH = Path.home() / ".clawd-tank" / "daemon.lock"
+
+
+def _acquire_lock() -> int:
+    """Acquire an exclusive file lock. Returns the fd, or exits if another daemon is running."""
+    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(LOCK_PATH), os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        print("Another clawd-tank daemon is already running", file=sys.stderr)
+        sys.exit(0)
+    return fd
 
 
 class ClawdDaemon:
@@ -24,6 +39,7 @@ class ClawdDaemon:
         self._pending_queue: asyncio.Queue[dict] = asyncio.Queue()
         self._running = True
         self._shutdown_event = asyncio.Event()
+        self._lock_fd: int | None = None
 
     async def _handle_message(self, msg: dict) -> None:
         """Handle a message from clawd-tank-notify via the socket."""
@@ -68,6 +84,9 @@ class ClawdDaemon:
         await self._ble.disconnect()
         await self._socket.stop()
         self._remove_pid()
+        if self._lock_fd is not None:
+            os.close(self._lock_fd)
+            self._lock_fd = None
 
     async def _ble_sender(self) -> None:
         """Process pending messages and send them over BLE."""
@@ -96,6 +115,7 @@ class ClawdDaemon:
             format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
         )
 
+        self._lock_fd = _acquire_lock()
         self._write_pid()
 
         loop = asyncio.get_running_loop()
