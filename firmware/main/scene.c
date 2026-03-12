@@ -152,6 +152,7 @@ struct scene_t {
     /* Clawd sprite */
     lv_obj_t *sprite_img;
     lv_image_dsc_t frame_dscs[16]; /* max frames across all anims */
+    uint8_t *frame_bufs[16];       /* converted ARGB8565 buffers (PSRAM) */
     clawd_anim_id_t cur_anim;
     int frame_idx;
     uint32_t last_frame_tick;
@@ -168,17 +169,54 @@ struct scene_t {
 
 /* ---------- Helpers ---------- */
 
+static void free_frame_bufs(scene_t *s)
+{
+    for (int i = 0; i < 16; i++) {
+        if (s->frame_bufs[i]) {
+            free(s->frame_bufs[i]);
+            s->frame_bufs[i] = NULL;
+        }
+    }
+}
+
 static void build_frame_dscs(scene_t *s, const anim_def_t *def)
 {
+    free_frame_bufs(s);
+
     for (int i = 0; i < def->frame_count && i < 16; i++) {
+        /* Convert RGB565 → ARGB8888, replacing chroma key with alpha=0 */
+        int pixel_count = SPRITE_W * SPRITE_H;
+        size_t buf_size = pixel_count * 4;
+        uint8_t *buf = malloc(buf_size);
+        if (!buf) continue;
+
+        const uint16_t *src = def->frames[i];
+        for (int p = 0; p < pixel_count; p++) {
+            uint16_t pixel = src[p];
+            uint8_t r5 = (pixel >> 11) & 0x1F;
+            uint8_t g6 = (pixel >> 5) & 0x3F;
+            uint8_t b5 = pixel & 0x1F;
+            /* Expand 5/6-bit to 8-bit */
+            uint8_t r = (r5 << 3) | (r5 >> 2);
+            uint8_t g = (g6 << 2) | (g6 >> 4);
+            uint8_t b = (b5 << 3) | (b5 >> 2);
+            uint8_t a = (pixel == TRANSPARENT_KEY) ? 0x00 : 0xFF;
+            /* LVGL ARGB8888 little-endian: [B, G, R, A] */
+            buf[p * 4 + 0] = b;
+            buf[p * 4 + 1] = g;
+            buf[p * 4 + 2] = r;
+            buf[p * 4 + 3] = a;
+        }
+        s->frame_bufs[i] = buf;
+
         lv_image_dsc_t *d = &s->frame_dscs[i];
         d->header.magic = LV_IMAGE_HEADER_MAGIC;
         d->header.w = SPRITE_W;
         d->header.h = SPRITE_H;
-        d->header.cf = LV_COLOR_FORMAT_RGB565;
-        d->header.stride = SPRITE_W * 2;
-        d->data = (const uint8_t *)def->frames[i];
-        d->data_size = SPRITE_W * SPRITE_H * 2;
+        d->header.cf = LV_COLOR_FORMAT_ARGB8888;
+        d->header.stride = SPRITE_W * 4;
+        d->data = buf;
+        d->data_size = buf_size;
     }
 }
 

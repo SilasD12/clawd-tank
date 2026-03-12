@@ -7,6 +7,7 @@
 #include "driver/gpio.h"
 #include "esp_timer.h"
 #include "esp_log.h"
+#include "driver/ledc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -22,7 +23,7 @@ static const char *TAG = "display";
 
 // Display config
 #define LCD_HOST        SPI2_HOST
-#define LCD_PIXEL_CLK   (20 * 1000 * 1000)
+#define LCD_PIXEL_CLK   (12 * 1000 * 1000)
 #define LCD_H_RES       320   // landscape width
 #define LCD_V_RES       172   // landscape height
 #define LCD_CMD_BITS    8
@@ -57,19 +58,30 @@ static void lvgl_tick_cb(void *arg) {
 lv_display_t *display_init(void) {
     ESP_LOGI(TAG, "Initializing display...");
 
-    // Backlight off during init
-    gpio_config_t bl_cfg = {
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = 1ULL << PIN_BL,
+    // PWM backlight via LEDC — keep duty low to reduce heat
+    ledc_timer_config_t bl_timer = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_8_BIT,
+        .timer_num = LEDC_TIMER_0,
+        .freq_hz = 5000,
+        .clk_cfg = LEDC_AUTO_CLK,
     };
-    ESP_ERROR_CHECK(gpio_config(&bl_cfg));
-    gpio_set_level(PIN_BL, 0);
+    ESP_ERROR_CHECK(ledc_timer_config(&bl_timer));
+    ledc_channel_config_t bl_channel = {
+        .gpio_num = PIN_BL,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = LEDC_CHANNEL_0,
+        .timer_sel = LEDC_TIMER_0,
+        .duty = 0,  // off during init
+        .hpoint = 0,
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&bl_channel));
 
     // SPI bus
     spi_bus_config_t buscfg = {
         .sclk_io_num = PIN_SCLK,
         .mosi_io_num = PIN_MOSI,
-        .miso_io_num = -1,
+        .miso_io_num = 5,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .max_transfer_sz = LCD_H_RES * LVGL_BUF_LINES * sizeof(uint16_t),
@@ -93,7 +105,7 @@ lv_display_t *display_init(void) {
     esp_lcd_panel_handle_t panel = NULL;
     esp_lcd_panel_dev_config_t panel_config = {
         .reset_gpio_num = PIN_RST,
-        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
+        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
         .bits_per_pixel = 16,
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &panel));
@@ -103,12 +115,30 @@ lv_display_t *display_init(void) {
 
     // Landscape: swap X/Y, then mirror as needed
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel, true));
-    ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel, false, true));
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel, true, false));
     // Apply offset for 172-pixel dimension (centered in 240-pixel controller RAM)
-    ESP_ERROR_CHECK(esp_lcd_panel_set_gap(panel, 34, 0));
+    // With swap_xy=true, CASET addresses rows and RASET addresses columns,
+    // so the 34-pixel column offset must go on y_gap, not x_gap.
+    ESP_ERROR_CHECK(esp_lcd_panel_set_gap(panel, 0, 34));
+
+    // Clear screen to black before turning on backlight
+    {
+        size_t clear_sz = LCD_H_RES * LVGL_BUF_LINES * sizeof(uint16_t);
+        void *clear_buf = heap_caps_calloc(1, clear_sz, MALLOC_CAP_DMA);
+        assert(clear_buf);
+        for (int y = 0; y < LCD_V_RES; y += LVGL_BUF_LINES) {
+            int h = (y + LVGL_BUF_LINES <= LCD_V_RES) ? LVGL_BUF_LINES : (LCD_V_RES - y);
+            esp_lcd_panel_draw_bitmap(panel, 0, y, LCD_H_RES, y + h, clear_buf);
+        }
+        // Wait for all queued SPI DMA transfers to complete before freeing
+        vTaskDelay(pdMS_TO_TICKS(100));
+        free(clear_buf);
+    }
 
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));
-    gpio_set_level(PIN_BL, 1);
+    // ~40% brightness (102/255) to reduce heat
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 102);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 
     // LVGL init
     lv_init();
