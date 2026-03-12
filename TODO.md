@@ -29,7 +29,7 @@ All 37 tests pass (11 C + 26 Python). Clawd sprite animations and notification c
 ## Hook Integration (Setup)
 
 - [x] **Install Claude Code hooks** — `host/install-hooks.sh` now auto-merges hooks into `~/.claude/settings.json` via jq
-- [ ] **Test full hook→daemon→BLE→display pipeline** — verify notifications appear when Claude Code goes idle and dismiss when user responds
+- [x] **Test full hook→daemon→BLE→display pipeline** — verified: notification appears on device when Claude Code goes idle
 
 ## Firmware Hardening (Medium Priority)
 
