@@ -2,7 +2,9 @@
 """
 Generate PNG frames for all Clawd animations.
 
-Uses the same pixel coordinates as the HTML designers for consistency.
+Uses the exact Clawd geometry from the Piskel reference / idle animation
+for consistent character appearance across all states.
+
 Output PNGs use #1a1a2e background which png2rgb565.py treats as transparent.
 
 Usage:
@@ -20,27 +22,31 @@ except ImportError:
 
 W, H = 64, 64
 BG = (0x1A, 0x1A, 0x2E)
-BODY_COLOR = (0xFF, 0x6B, 0x2B)
-BODY_DARK = (0x99, 0x3D, 0x1A)  # Sleeping variant
+
+# Authentic Clawd color from Piskel reference (NOT the spec's #ff6b2b)
+BODY_COLOR = (0xE3, 0x87, 0x6E)
+# Darker sleeping variant (desaturated version of authentic color)
+BODY_DARK = (0x8A, 0x52, 0x43)
+
 EYE_COLOR = (0x00, 0x00, 0x00)
 EYE_CLOSED = (0x55, 0x55, 0x55)  # Sleeping closed eyes
 ALERT_COLOR = (0xFF, 0xDD, 0x57)
 SPARKLE_COLOR = (0xFF, 0xDD, 0x57)
-Z_COLOR = (0x77, 0x77, 0xBB)     # Muted blue for sleeping "z"
-Z_FADE = (0x55, 0x55, 0x88)      # Faded "z"
-BLE_COLOR = (0x44, 0x66, 0xAA)   # Bluetooth icon color
+Z_COLOR = (0x77, 0x77, 0xBB)
+Z_FADE = (0x55, 0x55, 0x88)
+BLE_COLOR = (0x44, 0x66, 0xAA)
 
-# Clawd base dimensions (matches overlay in index.html)
-BODY = {"x": 18, "y": 23, "w": 28, "h": 18}
-EYES_LEFT = {"x": 25, "y": 28}
-EYES_RIGHT = {"x": 37, "y": 28}
-EYE_SIZE = 2
-LEG_POSITIONS = [21, 26, 36, 41]
-LEG_Y = 41
-LEG_W, LEG_H = 2, 5
-CLAW_LEFT = {"x": 14, "y": 27}
-CLAW_RIGHT = {"x": 46, "y": 27}
-CLAW_W, CLAW_H = 4, 4
+# ---- Clawd geometry from Piskel reference (matches idle animation exactly) ----
+# Body top: 40x7 at (12, 17)
+# Body eye region: 40x6 at (12, 24)
+# Claw/wide band: 52x7 at (6, 30)
+# Body lower: 40x6 at (12, 37)
+# 4 legs: each 4x7 at y=43, x = 15, 22, 39, 45
+# Eyes: 2x6 each at (19, 24) and (43, 24)
+
+LEG_POSITIONS = [15, 22, 39, 45]
+LEG_W, LEG_H = 4, 7
+LEG_Y = 43
 
 
 def new_frame():
@@ -54,66 +60,61 @@ def draw_rect(draw, x, y, w, h, color):
     draw.rectangle([x, y, x + w - 1, y + h - 1], fill=color)
 
 
-def draw_clawd(draw, dx=0, dy=0, eye_dx=0, eye_dy=0, leg_h=LEG_H):
-    """Draw the base Clawd sprite with optional offsets."""
-    # Body
-    draw_rect(draw, BODY["x"] + dx, BODY["y"] + dy, BODY["w"], BODY["h"], BODY_COLOR)
+def draw_clawd(draw, dx=0, dy=0, eye_dx=0, eye_dy=0, eye_mode='open',
+               leg_h=LEG_H, color=None):
+    """Draw the Clawd sprite matching Piskel reference geometry."""
+    c = color or BODY_COLOR
 
-    # Left claw
-    draw_rect(draw, CLAW_LEFT["x"] + dx, CLAW_LEFT["y"] + dy, CLAW_W, CLAW_H, BODY_COLOR)
+    # Main body top (y=17..23)
+    draw_rect(draw, 12 + dx, 17 + dy, 40, 7, c)
+    # Body eye region (y=24..29)
+    draw_rect(draw, 12 + dx, 24 + dy, 40, 6, c)
+    # Claw/wide band (y=30..36)
+    draw_rect(draw, 6 + dx, 30 + dy, 52, 7, c)
+    # Body lower (y=37..42)
+    draw_rect(draw, 12 + dx, 37 + dy, 40, 6, c)
 
-    # Right claw
-    draw_rect(draw, CLAW_RIGHT["x"] + dx, CLAW_RIGHT["y"] + dy, CLAW_W, CLAW_H, BODY_COLOR)
-
-    # Legs
+    # 4 Legs
     for lx in LEG_POSITIONS:
-        draw_rect(draw, lx + dx, LEG_Y + dy, LEG_W, leg_h, BODY_COLOR)
+        draw_rect(draw, lx + dx, LEG_Y + dy, LEG_W, leg_h, c)
 
     # Eyes
-    draw_rect(
-        draw,
-        EYES_LEFT["x"] + dx + eye_dx,
-        EYES_LEFT["y"] + dy + eye_dy,
-        EYE_SIZE,
-        EYE_SIZE,
-        EYE_COLOR,
-    )
-    draw_rect(
-        draw,
-        EYES_RIGHT["x"] + dx + eye_dx,
-        EYES_RIGHT["y"] + dy + eye_dy,
-        EYE_SIZE,
-        EYE_SIZE,
-        EYE_COLOR,
-    )
+    if eye_mode == 'open':
+        # Full 2x6 eyes
+        draw_rect(draw, 19 + dx + eye_dx, 24 + dy + eye_dy, 2, 6, EYE_COLOR)
+        draw_rect(draw, 43 + dx + eye_dx, 24 + dy + eye_dy, 2, 6, EYE_COLOR)
+    elif eye_mode == 'half-closed':
+        draw_rect(draw, 19 + dx + eye_dx, 27 + dy + eye_dy, 2, 3, EYE_COLOR)
+        draw_rect(draw, 43 + dx + eye_dx, 27 + dy + eye_dy, 2, 3, EYE_COLOR)
+    elif eye_mode == 'closed':
+        draw_rect(draw, 19 + dx + eye_dx, 28 + dy + eye_dy, 2, 1, EYE_COLOR)
+        draw_rect(draw, 43 + dx + eye_dx, 28 + dy + eye_dy, 2, 1, EYE_COLOR)
+    elif eye_mode == 'half-open':
+        draw_rect(draw, 19 + dx + eye_dx, 26 + dy + eye_dy, 2, 3, EYE_COLOR)
+        draw_rect(draw, 43 + dx + eye_dx, 26 + dy + eye_dy, 2, 3, EYE_COLOR)
 
 
 def draw_exclamation(draw, dx=0):
     """Draw '!' alert mark above Clawd's head."""
-    ex, ey = 32, 16
-    # Stick (2x2)
-    draw_rect(draw, ex, ey, 2, 2, ALERT_COLOR)
+    # Centered above body (body is 40px wide starting at x=12, center ~32)
+    ex, ey = 31 + dx, 11
+    # Stick (2x3)
+    draw_rect(draw, ex, ey, 2, 3, ALERT_COLOR)
     # Dot (2x1, with 1px gap)
-    draw_rect(draw, ex, ey + 3, 2, 1, ALERT_COLOR)
+    draw_rect(draw, ex, ey + 4, 2, 1, ALERT_COLOR)
 
 
 def draw_sparkles(draw, dy=0):
-    """Draw sparkle crosses at body corners."""
-    bx = BODY["x"]
-    by = BODY["y"] + dy
-    bx2 = bx + BODY["w"]
-    by2 = by + BODY["h"]
+    """Draw sparkle crosses around Clawd's body."""
+    # Body bounds: x=6..57 (claw band), y=17..42 (top to lower body)
+    bx, by = 6, 17 + dy
+    bx2, by2 = 58, 43 + dy
 
-    # Each sparkle is a small cross pattern
     sparkle_points = [
-        # Top-left
-        [(bx - 3, by - 1), (bx - 2, by - 2), (bx - 2, by), (bx - 1, by - 1)],
-        # Top-right
-        [(bx2 + 1, by - 1), (bx2 + 2, by - 2), (bx2 + 2, by), (bx2 + 3, by - 1)],
-        # Bottom-left
-        [(bx - 3, by2 + 1), (bx - 2, by2), (bx - 2, by2 + 2), (bx - 1, by2 + 1)],
-        # Bottom-right
-        [(bx2 + 1, by2 + 1), (bx2 + 2, by2), (bx2 + 2, by2 + 2), (bx2 + 3, by2 + 1)],
+        [(bx - 3, by + 4), (bx - 2, by + 3), (bx - 2, by + 5), (bx - 1, by + 4)],
+        [(bx2 + 1, by + 4), (bx2 + 2, by + 3), (bx2 + 2, by + 5), (bx2 + 3, by + 4)],
+        [(bx - 3, by2 - 4), (bx - 2, by2 - 5), (bx - 2, by2 - 3), (bx - 1, by2 - 4)],
+        [(bx2 + 1, by2 - 4), (bx2 + 2, by2 - 5), (bx2 + 2, by2 - 3), (bx2 + 3, by2 - 4)],
     ]
 
     for points in sparkle_points:
@@ -122,26 +123,96 @@ def draw_sparkles(draw, dy=0):
                 draw.point((px, py), fill=SPARKLE_COLOR)
 
 
+def draw_question_mark(draw):
+    """Draw '?' mark above Clawd's head."""
+    # Centered above body
+    qx, qy = 31, 11
+    draw_rect(draw, qx, qy, 2, 1, ALERT_COLOR)
+    draw.point((qx + 2, qy), fill=ALERT_COLOR)
+    draw.point((qx + 2, qy + 1), fill=ALERT_COLOR)
+    draw.point((qx + 1, qy + 2), fill=ALERT_COLOR)
+    draw.point((qx + 1, qy + 4), fill=ALERT_COLOR)
+
+
+def draw_z(draw, x, y, color):
+    """Draw a small 'z' character in 3x3 pixels."""
+    draw_rect(draw, x, y, 3, 1, color)
+    draw.point((x + 1, y + 1), fill=color)
+    draw_rect(draw, x, y + 2, 3, 1, color)
+
+
+def draw_ble_icon(draw):
+    """Draw 16x16 Bluetooth rune symbol."""
+    c = BLE_COLOR
+    for y in range(3, 13):
+        draw.point((8, y), fill=c)
+    draw.point((9, 4), fill=c)
+    draw.point((10, 5), fill=c)
+    draw.point((9, 6), fill=c)
+    draw.point((9, 9), fill=c)
+    draw.point((10, 10), fill=c)
+    draw.point((9, 11), fill=c)
+    draw.point((5, 9), fill=c)
+    draw.point((6, 8), fill=c)
+    draw.point((7, 7), fill=c)
+    draw.point((5, 6), fill=c)
+    draw.point((6, 7), fill=c)
+    draw.point((9, 3), fill=c)
+    draw.point((9, 12), fill=c)
+
+
+# ---- Sleeping Clawd ----
+# Curled up pose: body squished wider/shorter, positioned lower
+# Based on authentic proportions but compressed
+# Body: 48x10 at (8, 30) — wider, shorter
+# Claw band absorbed into body at this squished scale
+# Legs: very short stubs (4x3) at similar positions
+# Eyes: horizontal closed lines (2x1 each)
+
+SLEEP_BODY = {"x": 8, "y": 30, "w": 48, "h": 10}
+SLEEP_LEG_POSITIONS = [14, 21, 38, 44]
+SLEEP_LEG_Y = 40
+SLEEP_LEG_H = 3
+SLEEP_EYE_LEFT = {"x": 18, "y": 34}
+SLEEP_EYE_RIGHT = {"x": 42, "y": 34}
+
+
+def draw_sleeping_clawd(draw, dy=0):
+    """Draw sleeping Clawd using authentic proportions, squished down."""
+    c = BODY_DARK
+    # Wider body
+    draw_rect(draw, SLEEP_BODY["x"], SLEEP_BODY["y"] + dy,
+              SLEEP_BODY["w"], SLEEP_BODY["h"], c)
+    # Short leg stubs
+    for lx in SLEEP_LEG_POSITIONS:
+        draw_rect(draw, lx, SLEEP_LEG_Y + dy, LEG_W, SLEEP_LEG_H, c)
+    # Closed eyes (horizontal lines)
+    draw_rect(draw, SLEEP_EYE_LEFT["x"], SLEEP_EYE_LEFT["y"] + dy, 2, 1, EYE_CLOSED)
+    draw_rect(draw, SLEEP_EYE_RIGHT["x"], SLEEP_EYE_RIGHT["y"] + dy, 2, 1, EYE_CLOSED)
+
+
+# ---- Animation generators ----
+
 def generate_alert_frames():
     """Generate 6 frames for the alert animation."""
     frames = []
 
-    # Frame 0: Neutral pose
+    # Frame 0: Neutral
     img, draw = new_frame()
     draw_clawd(draw)
     frames.append(img)
 
-    # Frame 1: Eyes shift right 1px
+    # Frame 1: Eyes shift right
     img, draw = new_frame()
     draw_clawd(draw, eye_dx=1)
     frames.append(img)
 
-    # Frame 2: Body leans right 1px, eyes shifted
+    # Frame 2: Body leans right, eyes shifted
     img, draw = new_frame()
     draw_clawd(draw, dx=1, eye_dx=1)
     frames.append(img)
 
-    # Frame 3: "!" appears above head
+    # Frame 3: "!" appears
     img, draw = new_frame()
     draw_clawd(draw, dx=1, eye_dx=1)
     draw_exclamation(draw, dx=1)
@@ -153,7 +224,7 @@ def generate_alert_frames():
     draw_exclamation(draw, dx=1)
     frames.append(img)
 
-    # Frame 5: "!" fades, body still leaning
+    # Frame 5: "!" fades
     img, draw = new_frame()
     draw_clawd(draw, dx=1, eye_dx=1)
     frames.append(img)
@@ -165,17 +236,17 @@ def generate_happy_frames():
     """Generate 6 frames for the happy animation."""
     frames = []
 
-    # Frame 0: Neutral pose
+    # Frame 0: Neutral
     img, draw = new_frame()
     draw_clawd(draw)
     frames.append(img)
 
-    # Frame 1: Crouch (legs shorten by 2px)
+    # Frame 1: Crouch (shorter legs)
     img, draw = new_frame()
-    draw_clawd(draw, leg_h=3)
+    draw_clawd(draw, leg_h=4)
     frames.append(img)
 
-    # Frame 2: Jump up 4px, legs extend
+    # Frame 2: Jump up 4px
     img, draw = new_frame()
     draw_clawd(draw, dy=-4)
     frames.append(img)
@@ -186,12 +257,12 @@ def generate_happy_frames():
     draw_sparkles(draw, dy=-4)
     frames.append(img)
 
-    # Frame 4: Coming down (body at +2px from normal = -2 offset)
+    # Frame 4: Coming down
     img, draw = new_frame()
     draw_clawd(draw, dy=-2)
     frames.append(img)
 
-    # Frame 5: Landing (back to neutral)
+    # Frame 5: Landing
     img, draw = new_frame()
     draw_clawd(draw)
     frames.append(img)
@@ -199,102 +270,41 @@ def generate_happy_frames():
     return frames
 
 
-def draw_sleeping_clawd(draw, dy=0):
-    """Draw sleeping Clawd: wider/shorter body, dark color, closed eyes."""
-    # Sleeping body: 30w x 14h, lower on canvas
-    draw_rect(draw, 17, 27 + dy, 30, 14, BODY_DARK)
-    # Leg stubs (barely visible)
-    for lx in [20, 25, 35, 40]:
-        draw_rect(draw, lx, 41 + dy, 2, 2, BODY_DARK)
-    # Closed eyes: horizontal lines (2x1), dark gray
-    draw_rect(draw, 24, 31 + dy, 2, 1, EYE_CLOSED)
-    draw_rect(draw, 36, 31 + dy, 2, 1, EYE_CLOSED)
-
-
-def draw_z(draw, x, y, color):
-    """Draw a small 'z' character in 3x3 pixels."""
-    # Top row
-    draw_rect(draw, x, y, 3, 1, color)
-    # Diagonal
-    draw.point((x + 1, y + 1), fill=color)
-    # Bottom row
-    draw_rect(draw, x, y + 2, 3, 1, color)
-
-
-def draw_question_mark(draw):
-    """Draw '?' mark above Clawd's head (3x5 area)."""
-    qx, qy = 31, 15
-    # Top curve
-    draw_rect(draw, qx, qy, 2, 1, ALERT_COLOR)
-    draw.point((qx + 2, qy), fill=ALERT_COLOR)
-    # Right side
-    draw.point((qx + 2, qy + 1), fill=ALERT_COLOR)
-    # Middle
-    draw.point((qx + 1, qy + 2), fill=ALERT_COLOR)
-    # Dot (after gap)
-    draw.point((qx + 1, qy + 4), fill=ALERT_COLOR)
-
-
-def draw_ble_icon(draw):
-    """Draw 16x16 Bluetooth rune symbol."""
-    c = BLE_COLOR
-    # Vertical center line (col 8, rows 3-12)
-    for y in range(3, 13):
-        draw.point((8, y), fill=c)
-    # Top-right arrow
-    draw.point((9, 4), fill=c)
-    draw.point((10, 5), fill=c)
-    draw.point((9, 6), fill=c)
-    # Bottom-right arrow
-    draw.point((9, 9), fill=c)
-    draw.point((10, 10), fill=c)
-    draw.point((9, 11), fill=c)
-    # Cross lines (left)
-    draw.point((5, 9), fill=c)
-    draw.point((6, 8), fill=c)
-    draw.point((7, 7), fill=c)
-    draw.point((5, 6), fill=c)
-    draw.point((6, 7), fill=c)
-    # Peaks
-    draw.point((9, 3), fill=c)
-    draw.point((9, 12), fill=c)
-
-
 def generate_sleeping_frames():
     """Generate 6 frames for the sleeping animation."""
     frames = []
 
-    # Frame 0: Curled up, eyes closed
+    # Frame 0: Curled up
     img, draw = new_frame()
     draw_sleeping_clawd(draw)
     frames.append(img)
 
-    # Frame 1: Same pose, closed eyes
+    # Frame 1: Same
     img, draw = new_frame()
     draw_sleeping_clawd(draw)
     frames.append(img)
 
-    # Frame 2: Breathe out (body +1px)
+    # Frame 2: Breathe out (+1px)
     img, draw = new_frame()
     draw_sleeping_clawd(draw, dy=1)
     frames.append(img)
 
-    # Frame 3: Breathe in + "z" appears
+    # Frame 3: Breathe in + "z"
     img, draw = new_frame()
     draw_sleeping_clawd(draw, dy=-1)
-    draw_z(draw, 44, 23, Z_COLOR)
+    draw_z(draw, 52, 25, Z_COLOR)
     frames.append(img)
 
-    # Frame 4: "z" floats up, fading
+    # Frame 4: "z" floats up
     img, draw = new_frame()
     draw_sleeping_clawd(draw)
-    draw_z(draw, 45, 21, Z_FADE)
+    draw_z(draw, 53, 22, Z_FADE)
     frames.append(img)
 
-    # Frame 5: New small "z" starts near body
+    # Frame 5: New "z" near body
     img, draw = new_frame()
     draw_sleeping_clawd(draw)
-    draw_z(draw, 44, 24, Z_COLOR)
+    draw_z(draw, 52, 26, Z_COLOR)
     frames.append(img)
 
     return frames
@@ -309,7 +319,7 @@ def generate_disconnected_frames():
     draw_clawd(draw, eye_dx=1, eye_dy=-1)
     frames.append(img)
 
-    # Frame 1: Head tilts right 1px
+    # Frame 1: Head tilts right
     img, draw = new_frame()
     draw_clawd(draw, dx=1, eye_dx=1, eye_dy=-1)
     frames.append(img)
@@ -319,18 +329,18 @@ def generate_disconnected_frames():
     draw_clawd(draw, eye_dx=-1)
     frames.append(img)
 
-    # Frame 3: Eyes shift back right
+    # Frame 3: Eyes back right
     img, draw = new_frame()
     draw_clawd(draw, eye_dx=1, eye_dy=-1)
     frames.append(img)
 
-    # Frame 4: "?" appears above head
+    # Frame 4: "?" appears
     img, draw = new_frame()
     draw_clawd(draw, eye_dx=1, eye_dy=-1)
     draw_question_mark(draw)
     frames.append(img)
 
-    # Frame 5: "?" fades, back to looking up-right
+    # Frame 5: "?" fades
     img, draw = new_frame()
     draw_clawd(draw, eye_dx=1, eye_dy=-1)
     frames.append(img)

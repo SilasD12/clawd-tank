@@ -172,6 +172,7 @@ static void build_frame_dscs(scene_t *s, const anim_def_t *def)
 {
     for (int i = 0; i < def->frame_count && i < 16; i++) {
         lv_image_dsc_t *d = &s->frame_dscs[i];
+        d->header.magic = LV_IMAGE_HEADER_MAGIC;
         d->header.w = SPRITE_W;
         d->header.h = SPRITE_H;
         d->header.cf = LV_COLOR_FORMAT_RGB565;
