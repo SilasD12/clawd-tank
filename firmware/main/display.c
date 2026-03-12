@@ -1,5 +1,6 @@
 // firmware/main/display.c
 #include "display.h"
+#include "config_store.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
@@ -136,8 +137,7 @@ lv_display_t *display_init(void) {
     }
 
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));
-    // ~40% brightness (102/255) to reduce heat
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 102);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, config_store_get_brightness());
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 
     // LVGL init
@@ -178,4 +178,11 @@ lv_display_t *display_init(void) {
 
     ESP_LOGI(TAG, "Display initialized: %dx%d landscape", LCD_H_RES, LCD_V_RES);
     return display;
+}
+
+void display_set_brightness(uint8_t duty)
+{
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    ESP_LOGI(TAG, "Brightness set to %u", duty);
 }
