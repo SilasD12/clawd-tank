@@ -125,7 +125,7 @@ lv_display_t *display_init(void) {
     {
         size_t clear_sz = LCD_H_RES * LVGL_BUF_LINES * sizeof(uint16_t);
         void *clear_buf = heap_caps_calloc(1, clear_sz, MALLOC_CAP_DMA);
-        assert(clear_buf);
+        configASSERT(clear_buf);
         for (int y = 0; y < LCD_V_RES; y += LVGL_BUF_LINES) {
             int h = (y + LVGL_BUF_LINES <= LCD_V_RES) ? LVGL_BUF_LINES : (LCD_V_RES - y);
             esp_lcd_panel_draw_bitmap(panel, 0, y, LCD_H_RES, y + h, clear_buf);
@@ -144,12 +144,16 @@ lv_display_t *display_init(void) {
     lv_init();
 
     lv_display_t *display = lv_display_create(LCD_H_RES, LCD_V_RES);
+    if (!display) {
+        ESP_LOGE(TAG, "lv_display_create failed — out of memory");
+        abort();
+    }
 
     // DMA buffers
     size_t buf_sz = LCD_H_RES * LVGL_BUF_LINES * sizeof(lv_color16_t);
     void *buf1 = heap_caps_malloc(buf_sz, MALLOC_CAP_DMA);
     void *buf2 = heap_caps_malloc(buf_sz, MALLOC_CAP_DMA);
-    assert(buf1 && buf2);
+    configASSERT(buf1 && buf2);
 
     lv_display_set_buffers(display, buf1, buf2, buf_sz,
                             LV_DISPLAY_RENDER_MODE_PARTIAL);
