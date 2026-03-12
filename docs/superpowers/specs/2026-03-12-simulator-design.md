@@ -216,11 +216,8 @@ typedef struct {
 
 Key settings matching firmware behavior:
 - `LV_COLOR_DEPTH 16` (RGB565)
-- `LV_USE_SDL 1` (interactive mode display driver)
-- `LV_FONT_MONTSERRAT_8 1`, `LV_FONT_MONTSERRAT_10 1`, `LV_FONT_MONTSERRAT_18 1`
-- `LV_USE_FLOAT 1`
-- `LV_SDL_DIRECT_EXIT 0` (prevent SDL from calling `exit(0)` on window close before screenshots are written)
-- `LV_SDL_INCLUDE_PATH <SDL2/SDL.h>`
+- `LV_USE_SDL 0` (we manage SDL2 directly in `sim_display.c` for full keyboard event control)
+- `LV_FONT_MONTSERRAT_8 1`, `LV_FONT_MONTSERRAT_10 1`, `LV_FONT_MONTSERRAT_12 1`, `LV_FONT_MONTSERRAT_14 1`, `LV_FONT_MONTSERRAT_18 1`
 - No `LV_USE_OS` (no RTOS)
 
 ## Build System
