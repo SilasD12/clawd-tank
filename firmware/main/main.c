@@ -2,28 +2,31 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "esp_log.h"
 #include "display.h"
-#include "lvgl.h"
+#include "ble_service.h"
+#include "ui_manager.h"
 
 static const char *TAG = "clawd";
 
-static _lock_t lvgl_lock;
+#define EVT_QUEUE_LEN 16
+
+static QueueHandle_t s_evt_queue;
 
 static void ui_task(void *arg) {
-    lv_display_t *display = (lv_display_t *)arg;
-    (void)display;
+    ui_manager_init();
 
-    _lock_acquire(&lvgl_lock);
-    lv_obj_t *label = lv_label_create(lv_screen_active());
-    lv_label_set_text(label, "Clawd ready!");
-    lv_obj_center(label);
-    _lock_release(&lvgl_lock);
-
+    ble_evt_t evt;
     while (1) {
-        _lock_acquire(&lvgl_lock);
-        lv_timer_handler();
-        _lock_release(&lvgl_lock);
+        // Process any pending BLE events
+        while (xQueueReceive(s_evt_queue, &evt, 0) == pdTRUE) {
+            ui_manager_handle_event(&evt);
+        }
+
+        // Run LVGL
+        ui_manager_tick();
+
         vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
@@ -31,7 +34,18 @@ static void ui_task(void *arg) {
 void app_main(void) {
     ESP_LOGI(TAG, "Clawd starting...");
 
-    lv_display_t *display = display_init();
+    // Create event queue (BLE -> UI)
+    s_evt_queue = xQueueCreate(EVT_QUEUE_LEN, sizeof(ble_evt_t));
+    assert(s_evt_queue);
 
-    xTaskCreate(ui_task, "ui_task", 4096, display, 5, NULL);
+    // Init display (SPI + LVGL)
+    display_init();
+
+    // Init BLE (NimBLE GATT server, posts events to queue)
+    ble_service_init(s_evt_queue);
+
+    // Start UI task
+    xTaskCreate(ui_task, "ui_task", 8192, NULL, 5, NULL);
+
+    ESP_LOGI(TAG, "Clawd running");
 }
