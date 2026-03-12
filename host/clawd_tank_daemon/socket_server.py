@@ -1,4 +1,4 @@
-"""Unix socket server that receives hook messages from clawd-notify."""
+"""Unix socket server that receives hook messages from clawd-tank-notify."""
 
 import asyncio
 import json
@@ -7,13 +7,13 @@ import os
 from pathlib import Path
 from typing import Callable, Awaitable
 
-logger = logging.getLogger("clawd.socket")
+logger = logging.getLogger("clawd-tank.socket")
 
-SOCKET_PATH = Path.home() / ".clawd" / "sock"
+SOCKET_PATH = Path.home() / ".clawd-tank" / "sock"
 
 
 class SocketServer:
-    """Listens on a Unix socket for JSON messages from clawd-notify."""
+    """Listens on a Unix socket for JSON messages from clawd-tank-notify."""
 
     def __init__(self, on_message: Callable[[dict], Awaitable[None]],
                  socket_path: Path = SOCKET_PATH):

@@ -1,5 +1,5 @@
 import json
-from clawd_daemon.protocol import (
+from clawd_tank_daemon.protocol import (
     hook_payload_to_daemon_message,
     daemon_message_to_ble_payload,
 )

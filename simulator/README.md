@@ -1,4 +1,4 @@
-# Clawd Simulator
+# Clawd Tank Simulator
 
 Native macOS simulator for the Clawd LVGL UI. Runs the same firmware rendering code (`scene.c`, `notification_ui.c`, `ui_manager.c`, `notification.c`) without hardware, using shim headers to replace ESP-IDF APIs.
 
@@ -25,7 +25,7 @@ cmake --build build
 ### Interactive mode (default)
 
 ```bash
-./build/clawd-sim
+./build/clawd-tank-sim
 ```
 
 Opens a 960x516 window (320x172 scaled 3x). Keyboard shortcuts:
@@ -43,13 +43,13 @@ Opens a 960x516 window (320x172 scaled 3x). Keyboard shortcuts:
 Change window scale with `--scale`:
 
 ```bash
-./build/clawd-sim --scale 4
+./build/clawd-tank-sim --scale 4
 ```
 
 ### Headless mode
 
 ```bash
-./build/clawd-sim --headless \
+./build/clawd-tank-sim --headless \
   --events 'connect; wait 500; notify "GitHub" "PR merged"; wait 2000; disconnect' \
   --screenshot-dir ./shots/ \
   --screenshot-on-event
@@ -85,7 +85,7 @@ Semicolon-separated commands with `wait` for timing:
 Example — full lifecycle:
 
 ```bash
-./build/clawd-sim --headless \
+./build/clawd-tank-sim --headless \
   --events 'connect; wait 200; notify "GitHub" "PR merged"; wait 500; notify "Slack" "Deploy done"; wait 3000; dismiss 0; wait 1000; clear; wait 500; disconnect' \
   --screenshot-dir ./shots/ \
   --screenshot-interval 250 --screenshot-on-event
@@ -109,7 +109,7 @@ For complex sequences, use a JSON file:
 Run it:
 
 ```bash
-./build/clawd-sim --headless \
+./build/clawd-tank-sim --headless \
   --scenario scenarios/demo.json \
   --screenshot-dir ./shots/ \
   --screenshot-on-event

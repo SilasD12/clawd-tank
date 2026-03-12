@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from clawd_daemon.socket_server import SocketServer
+from clawd_tank_daemon.socket_server import SocketServer
 
 
 async def _send_raw(socket_path: Path, data: bytes) -> None:

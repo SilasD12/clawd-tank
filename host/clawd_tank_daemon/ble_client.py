@@ -1,10 +1,10 @@
-"""BLE GATT client for communicating with the Clawd ESP32 device."""
+"""BLE GATT client for communicating with the Clawd Tank ESP32 device."""
 
 import asyncio
 import logging
 from bleak import BleakClient, BleakScanner
 
-logger = logging.getLogger("clawd.ble")
+logger = logging.getLogger("clawd-tank.ble")
 
 SERVICE_UUID = "aecbefd9-98a2-4773-9fed-bb2166daa49a"
 NOTIFICATION_CHR_UUID = "71ffb137-8b7a-47c9-9a7a-4b1b16662d9a"
@@ -12,7 +12,7 @@ SCAN_INTERVAL_SECS = 5
 
 
 class ClawdBleClient:
-    """Manages BLE connection to the Clawd ESP32 device."""
+    """Manages BLE connection to the Clawd Tank ESP32 device."""
 
     def __init__(self):
         self._client: BleakClient | None = None
@@ -24,18 +24,18 @@ class ClawdBleClient:
         return self._client is not None and self._client.is_connected
 
     async def connect(self) -> None:
-        """Scan for and connect to the Clawd device. Retries until found."""
+        """Scan for and connect to the Clawd Tank device. Retries until found."""
         self._loop = asyncio.get_running_loop()
         while True:
-            logger.info("Scanning for Clawd device...")
+            logger.info("Scanning for Clawd Tank device...")
             device = await BleakScanner.find_device_by_name(
-                "Clawd", timeout=SCAN_INTERVAL_SECS
+                "Clawd Tank", timeout=SCAN_INTERVAL_SECS
             )
             if device is None:
-                logger.debug("Clawd not found, retrying...")
+                logger.debug("Clawd Tank not found, retrying...")
                 continue
 
-            logger.info("Found Clawd: %s (%s)", device.name, device.address)
+            logger.info("Found Clawd Tank: %s (%s)", device.name, device.address)
             try:
                 client = BleakClient(
                     device,
@@ -43,7 +43,7 @@ class ClawdBleClient:
                 )
                 await client.connect()
                 self._client = client
-                logger.info("Connected to Clawd (MTU: %d)", client.mtu_size)
+                logger.info("Connected to Clawd Tank (MTU: %d)", client.mtu_size)
                 return
             except Exception as e:
                 logger.warning("Connection failed: %s, retrying...", e)
@@ -51,7 +51,7 @@ class ClawdBleClient:
 
     def _on_disconnect(self, client: BleakClient) -> None:
         """Handle disconnect — may be called from a non-event-loop thread."""
-        logger.warning("Disconnected from Clawd")
+        logger.warning("Disconnected from Clawd Tank")
         if self._loop is not None and self._loop.is_running():
             self._loop.call_soon_threadsafe(self._clear_client)
         else:

@@ -1,4 +1,4 @@
-"""Clawd daemon — bridges Claude Code hooks to ESP32 via BLE."""
+"""Clawd Tank daemon — bridges Claude Code hooks to ESP32 via BLE."""
 
 import asyncio
 import logging
@@ -11,9 +11,9 @@ from .ble_client import ClawdBleClient
 from .protocol import daemon_message_to_ble_payload
 from .socket_server import SocketServer
 
-logger = logging.getLogger("clawd")
+logger = logging.getLogger("clawd-tank")
 
-PID_PATH = Path.home() / ".clawd" / "daemon.pid"
+PID_PATH = Path.home() / ".clawd-tank" / "daemon.pid"
 
 
 class ClawdDaemon:
@@ -26,7 +26,7 @@ class ClawdDaemon:
         self._shutdown_event = asyncio.Event()
 
     async def _handle_message(self, msg: dict) -> None:
-        """Handle a message from clawd-notify via the socket."""
+        """Handle a message from clawd-tank-notify via the socket."""
         event = msg.get("event")
         session_id = msg.get("session_id", "")
 

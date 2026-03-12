@@ -131,8 +131,8 @@ static void start_advertising(void) {
     struct ble_hs_adv_fields fields = {0};
 
     fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
-    fields.name = (uint8_t *)"Clawd";
-    fields.name_len = 5;
+    fields.name = (uint8_t *)"Clawd Tank";
+    fields.name_len = 10;
     fields.name_is_complete = 1;
     ble_gap_adv_set_fields(&fields);
 
@@ -177,7 +177,7 @@ static int ble_gap_event_cb(struct ble_gap_event *event, void *arg) {
 }
 
 static void ble_on_sync(void) {
-    ESP_LOGI(TAG, "BLE synced, starting advertising as 'Clawd'");
+    ESP_LOGI(TAG, "BLE synced, starting advertising as 'Clawd Tank'");
     start_advertising();
 }
 
@@ -192,7 +192,7 @@ void ble_service_init(QueueHandle_t evt_queue) {
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(nimble_port_init());
 
-    ble_svc_gap_device_name_set("Clawd");
+    ble_svc_gap_device_name_set("Clawd Tank");
     ble_svc_gap_init();
     ble_svc_gatt_init();
 

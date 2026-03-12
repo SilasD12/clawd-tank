@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from clawd_daemon.daemon import ClawdDaemon
+from clawd_tank_daemon.daemon import ClawdDaemon
 
 
 @pytest.mark.asyncio

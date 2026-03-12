@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Clawd is a physical notification display for Claude Code sessions. It runs on a **Waveshare ESP32-C6-LCD-1.47** (320x172 ST7789 SPI display) and shows an animated pixel-art crab ("Clawd") alongside notification cards received over BLE from a Python host daemon.
+Clawd Tank is a physical notification display for Claude Code sessions. It runs on a **Waveshare ESP32-C6-LCD-1.47** (320x172 ST7789 SPI display) and shows an animated pixel-art crab ("Clawd") alongside notification cards received over BLE from a Python host daemon.
 
 Three components: **firmware** (ESP-IDF C), **simulator** (native macOS), **host** (Python daemon + Claude Code hooks).
 
@@ -36,10 +36,10 @@ Requires CMake 3.16+ and SDL2 (`brew install sdl2`).
 cd simulator && cmake -B build && cmake --build build
 
 # Run interactive (SDL2 window, 3x scale)
-./simulator/build/clawd-sim
+./simulator/build/clawd-tank-sim
 
 # Run headless with events
-./simulator/build/clawd-sim --headless \
+./simulator/build/clawd-tank-sim --headless \
   --events 'connect; wait 500; notify "GitHub" "PR merged"; wait 2000; disconnect' \
   --screenshot-dir ./shots/ --screenshot-on-event
 ```
@@ -71,7 +71,7 @@ python tools/png2rgb565.py <input_dir> <output.h> --name <sprite_name>
 ### Data Flow
 
 ```
-Claude Code hooks → clawd-notify → Unix socket → clawd_daemon → BLE → ESP32-C6 firmware
+Claude Code hooks → clawd-tank-notify → Unix socket → clawd_tank_daemon → BLE → ESP32-C6 firmware
                                                                           ↓
                                                               ble_service → event queue → ui_manager
                                                                                             ↓
@@ -95,8 +95,8 @@ Compiles the **same firmware source files** unmodified. ESP-IDF APIs are replace
 
 ### Host (`host/`)
 
-- **clawd-notify** — Executable hook entry point. Reads Claude Code hook stdin, forwards to daemon via Unix socket.
-- **clawd_daemon/** — Async Python daemon (asyncio + bleak). BLE client, notification tracking, replay on reconnect.
+- **clawd-tank-notify** — Executable hook entry point. Reads Claude Code hook stdin, forwards to daemon via Unix socket.
+- **clawd_tank_daemon/** — Async Python daemon (asyncio + bleak). BLE client, notification tracking, replay on reconnect.
 
 ## Key Constraints
 

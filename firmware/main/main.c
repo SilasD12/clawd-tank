@@ -8,7 +8,7 @@
 #include "ble_service.h"
 #include "ui_manager.h"
 
-static const char *TAG = "clawd";
+static const char *TAG = "clawd-tank";
 
 #define EVT_QUEUE_LEN 16
 
@@ -32,7 +32,7 @@ static void ui_task(void *arg) {
 }
 
 void app_main(void) {
-    ESP_LOGI(TAG, "Clawd starting...");
+    ESP_LOGI(TAG, "Clawd Tank starting...");
 
     // Create event queue (BLE -> UI)
     s_evt_queue = xQueueCreate(EVT_QUEUE_LEN, sizeof(ble_evt_t));
@@ -47,5 +47,5 @@ void app_main(void) {
     // Start UI task
     xTaskCreate(ui_task, "ui_task", 8192, NULL, 5, NULL);
 
-    ESP_LOGI(TAG, "Clawd running");
+    ESP_LOGI(TAG, "Clawd Tank running");
 }

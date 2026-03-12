@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""clawd-notify — Claude Code hook handler for Clawd notifications.
+"""clawd-tank-notify — Claude Code hook handler for Clawd Tank notifications.
 
-Reads hook payload from stdin, forwards to the Clawd daemon.
+Reads hook payload from stdin, forwards to the Clawd Tank daemon.
 Starts the daemon if not running.
 """
 
@@ -13,10 +13,10 @@ import sys
 import time
 from pathlib import Path
 
-# Ensure clawd_daemon package is importable
+# Ensure clawd_tank_daemon package is importable
 sys.path.insert(0, str(Path(__file__).parent))
 
-CLAWD_DIR = Path.home() / ".clawd"
+CLAWD_DIR = Path.home() / ".clawd-tank"
 PID_PATH = CLAWD_DIR / "daemon.pid"
 SOCKET_PATH = CLAWD_DIR / "sock"
 
@@ -42,7 +42,7 @@ def start_daemon() -> None:
     # Start daemon as a detached subprocess
     log_file = open(CLAWD_DIR / "daemon.log", "a")
     subprocess.Popen(
-        [sys.executable, "-m", "clawd_daemon.daemon"],
+        [sys.executable, "-m", "clawd_tank_daemon.daemon"],
         cwd=str(Path(__file__).parent),
         stdout=log_file,
         stderr=subprocess.STDOUT,
@@ -61,7 +61,7 @@ def start_daemon() -> None:
 
 def send_to_daemon(payload: dict) -> None:
     """Send a JSON message to the daemon via Unix socket."""
-    from clawd_daemon.protocol import hook_payload_to_daemon_message
+    from clawd_tank_daemon.protocol import hook_payload_to_daemon_message
 
     msg = hook_payload_to_daemon_message(payload)
     if msg is None:

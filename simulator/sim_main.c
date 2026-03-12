@@ -23,7 +23,7 @@ static uint32_t opt_run_ms = 0;
 static void print_usage(void)
 {
     printf(
-        "Usage: clawd-sim [OPTIONS]\n"
+        "Usage: clawd-tank-sim [OPTIONS]\n"
         "\n"
         "Display:\n"
         "  --headless              Run without SDL2 window\n"
