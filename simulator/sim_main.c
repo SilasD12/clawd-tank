@@ -164,12 +164,12 @@ static void run_interactive(void)
 
 static int s_sample_notif_idx = 0;
 static const struct { const char *project; const char *message; } sample_notifs[] = {
-    {"GitHub",  "PR #42: Fix auth flow"},
-    {"Slack",   "Meeting in 5 minutes"},
-    {"Jira",    "PROJ-123 moved to Done"},
-    {"Email",   "New message from Alice"},
-    {"CI/CD",   "Build #789 passed"},
-    {"Discord", "New message in #general"},
+    {"clawd-tank",     "Waiting for input"},
+    {"my-api",         "Running tests..."},
+    {"web-app",        "Task completed"},
+    {"data-pipeline",  "Build failed"},
+    {"mobile-app",     "Reviewing changes"},
+    {"infra",          "Waiting for approval"},
 };
 #define SAMPLE_COUNT (sizeof(sample_notifs) / sizeof(sample_notifs[0]))
 

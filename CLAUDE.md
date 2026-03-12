@@ -40,7 +40,7 @@ cd simulator && cmake -B build && cmake --build build
 
 # Run headless with events
 ./simulator/build/clawd-tank-sim --headless \
-  --events 'connect; wait 500; notify "GitHub" "PR merged"; wait 2000; disconnect' \
+  --events 'connect; wait 500; notify "clawd-tank" "Waiting for input"; wait 2000; disconnect' \
   --screenshot-dir ./shots/ --screenshot-on-event
 ```
 

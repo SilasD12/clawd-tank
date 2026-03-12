@@ -49,7 +49,7 @@ cmake -B build && cmake --build build
 
 # Headless mode — outputs PNG screenshots
 ./build/clawd-tank-sim --headless \
-  --events 'connect; wait 500; notify "GitHub" "PR merged"; wait 2000; disconnect' \
+  --events 'connect; wait 500; notify "clawd-tank" "Waiting for input"; wait 2000; disconnect' \
   --screenshot-dir ./shots/ --screenshot-on-event
 ```
 
