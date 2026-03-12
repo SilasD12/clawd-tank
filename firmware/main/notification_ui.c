@@ -6,10 +6,10 @@
 
 #define SCREEN_W           320
 #define SCREEN_H           172
-#define COUNTER_H          14
-#define FEATURED_H         50
-#define COMPACT_ROW_H      12
-#define DOT_SIZE           4
+#define COUNTER_H          20
+#define FEATURED_H         64
+#define COMPACT_ROW_H      18
+#define DOT_SIZE           6
 
 /* Accent colors per notification slot (1:1 mapping, max 8) */
 static const uint32_t accent_colors[NOTIF_MAX_COUNT] = {
@@ -69,9 +69,13 @@ notification_ui_t *notification_ui_create(lv_obj_t *parent)
     lv_obj_clear_flag(ui->container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(ui->container, LV_OBJ_FLAG_HIDDEN);
 
+    /* Dark background matching the scene panel */
+    lv_obj_set_style_bg_opa(ui->container, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(ui->container, lv_color_hex(0x0f1320), 0);
+
     /* Counter label: "▸ N WAITING!" */
     ui->counter_label = lv_label_create(ui->container);
-    lv_obj_set_style_text_font(ui->counter_label, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_font(ui->counter_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(ui->counter_label, lv_color_hex(0xffdd57), 0);
     lv_obj_set_pos(ui->counter_label, 4, 2);
     lv_label_set_text(ui->counter_label, "");
@@ -80,11 +84,11 @@ notification_ui_t *notification_ui_create(lv_obj_t *parent)
     ui->featured_card = lv_obj_create(ui->container);
     lv_obj_remove_style_all(ui->featured_card);
     lv_obj_set_style_bg_opa(ui->featured_card, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_color(ui->featured_card, lv_color_hex(0x2a1a3e), 0);
+    lv_obj_set_style_bg_color(ui->featured_card, lv_color_hex(0x1a1a2e), 0);
     lv_obj_set_style_border_width(ui->featured_card, 2, 0);
     lv_obj_set_style_border_color(ui->featured_card, lv_color_hex(accent_colors[0]), 0);
     lv_obj_set_style_radius(ui->featured_card, 3, 0);
-    lv_obj_set_style_pad_all(ui->featured_card, 4, 0);
+    lv_obj_set_style_pad_all(ui->featured_card, 6, 0);
     lv_obj_set_pos(ui->featured_card, 4, COUNTER_H + 2);
     lv_obj_set_size(ui->featured_card, lv_pct(95), FEATURED_H);
     lv_obj_set_scrollbar_mode(ui->featured_card, LV_SCROLLBAR_MODE_OFF);
@@ -92,7 +96,7 @@ notification_ui_t *notification_ui_create(lv_obj_t *parent)
 
     /* Featured: project name */
     ui->featured_project = lv_label_create(ui->featured_card);
-    lv_obj_set_style_text_font(ui->featured_project, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_font(ui->featured_project, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(ui->featured_project, lv_color_hex(0xffdd57), 0);
     lv_obj_set_pos(ui->featured_project, 0, 0);
     lv_label_set_long_mode(ui->featured_project, LV_LABEL_LONG_CLIP);
@@ -100,17 +104,17 @@ notification_ui_t *notification_ui_create(lv_obj_t *parent)
 
     /* Featured: message */
     ui->featured_message = lv_label_create(ui->featured_card);
-    lv_obj_set_style_text_font(ui->featured_message, &lv_font_montserrat_8, 0);
+    lv_obj_set_style_text_font(ui->featured_message, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(ui->featured_message, lv_color_hex(0xcc99ff), 0);
-    lv_obj_set_pos(ui->featured_message, 0, 14);
+    lv_obj_set_pos(ui->featured_message, 0, 18);
     lv_label_set_long_mode(ui->featured_message, LV_LABEL_LONG_CLIP);
     lv_obj_set_width(ui->featured_message, lv_pct(100));
 
     /* Featured: badge */
     ui->featured_badge = lv_label_create(ui->featured_card);
-    lv_obj_set_style_text_font(ui->featured_badge, &lv_font_montserrat_8, 0);
+    lv_obj_set_style_text_font(ui->featured_badge, &lv_font_montserrat_10, 0);
     lv_obj_set_style_text_color(ui->featured_badge, lv_color_hex(0x88cc88), 0);
-    lv_obj_set_pos(ui->featured_badge, 0, 30);
+    lv_obj_set_pos(ui->featured_badge, 0, 38);
 
     /* Auto-rotation timer */
     ui->rotation_timer = lv_timer_create(rotation_timer_cb, ROTATION_INTERVAL_MS, ui);
@@ -287,9 +291,9 @@ static void rebuild_display(notification_ui_t *ui)
 
         /* Project name */
         lv_obj_t *label = lv_label_create(row);
-        lv_obj_set_style_text_font(label, &lv_font_montserrat_8, 0);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
         lv_obj_set_style_text_color(label, lv_color_hex(0xcccccc), 0);
-        lv_obj_set_pos(label, DOT_SIZE + 6, 1);
+        lv_obj_set_pos(label, DOT_SIZE + 6, 2);
         lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
         lv_obj_set_width(label, lv_pct(85));
         lv_label_set_text(label, ui->sorted[i].project);

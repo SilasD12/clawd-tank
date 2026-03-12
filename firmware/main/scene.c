@@ -330,7 +330,7 @@ scene_t *scene_create(lv_obj_t *parent)
 
     /* No-connection label — bottom center */
     s->noconn_label = lv_label_create(s->container);
-    lv_obj_set_style_text_font(s->noconn_label, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_font(s->noconn_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s->noconn_label, lv_color_hex(0x556677), 0);
     lv_obj_align(s->noconn_label, LV_ALIGN_BOTTOM_MID, 0, -GRASS_HEIGHT - 2);
     lv_label_set_text(s->noconn_label, "No connection");
