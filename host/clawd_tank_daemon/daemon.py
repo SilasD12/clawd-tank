@@ -41,7 +41,11 @@ class ClawdDaemon:
         """Replay all active notifications after reconnect."""
         logger.info("Replaying %d active notifications", len(self._active_notifications))
         for msg in list(self._active_notifications.values()):
-            payload = daemon_message_to_ble_payload(msg)
+            try:
+                payload = daemon_message_to_ble_payload(msg)
+            except ValueError:
+                logger.error("Skipping unknown event in replay: %s", msg.get("event"))
+                continue
             await self._ble.write_notification(payload)
             await asyncio.sleep(0.05)  # Small delay between writes
 
@@ -72,9 +76,13 @@ class ClawdDaemon:
                 msg = await asyncio.wait_for(self._pending_queue.get(), timeout=1.0)
             except asyncio.TimeoutError:
                 continue
-            await self._ble.ensure_connected()
+            try:
+                payload = daemon_message_to_ble_payload(msg)
+            except ValueError:
+                logger.error("Skipping unknown event: %s", msg.get("event"))
+                continue
 
-            payload = daemon_message_to_ble_payload(msg)
+            await self._ble.ensure_connected()
             success = await self._ble.write_notification(payload)
 
             if not success:
