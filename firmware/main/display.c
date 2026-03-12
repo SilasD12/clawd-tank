@@ -62,7 +62,7 @@ lv_display_t *display_init(void) {
         .mode = GPIO_MODE_OUTPUT,
         .pin_bit_mask = 1ULL << PIN_BL,
     };
-    gpio_config(&bl_cfg);
+    ESP_ERROR_CHECK(gpio_config(&bl_cfg));
     gpio_set_level(PIN_BL, 0);
 
     // SPI bus

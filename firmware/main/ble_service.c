@@ -86,7 +86,9 @@ static void parse_notification_json(const char *buf, uint16_t len) {
     }
 
     cJSON_Delete(json);
-    xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(100));
+    if (xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(0)) != pdTRUE) {
+        ESP_LOGW(TAG, "Event queue full, dropping notification");
+    }
 }
 
 static int notification_write_cb(uint16_t conn_handle, uint16_t attr_handle,
@@ -136,8 +138,11 @@ static void start_advertising(void) {
 
     adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
-    ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER,
-                      &adv_params, ble_gap_event_cb, NULL);
+    int rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER,
+                               &adv_params, ble_gap_event_cb, NULL);
+    if (rc != 0) {
+        ESP_LOGW(TAG, "Failed to start advertising: %d", rc);
+    }
 }
 
 static int ble_gap_event_cb(struct ble_gap_event *event, void *arg) {
@@ -146,7 +151,9 @@ static int ble_gap_event_cb(struct ble_gap_event *event, void *arg) {
         ESP_LOGI(TAG, "BLE %s", event->connect.status == 0 ? "connected" : "connect failed");
         if (event->connect.status == 0) {
             ble_evt_t evt = { .type = BLE_EVT_CONNECTED };
-            xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(100));
+            if (xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(0)) != pdTRUE) {
+                ESP_LOGW(TAG, "Event queue full, dropping connect event");
+            }
         } else {
             start_advertising();
         }
@@ -154,7 +161,9 @@ static int ble_gap_event_cb(struct ble_gap_event *event, void *arg) {
     case BLE_GAP_EVENT_DISCONNECT:
         ESP_LOGI(TAG, "BLE disconnected");
         ble_evt_t evt = { .type = BLE_EVT_DISCONNECTED };
-        xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(100));
+        if (xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(0)) != pdTRUE) {
+            ESP_LOGW(TAG, "Event queue full, dropping disconnect event");
+        }
         start_advertising();
         break;
     case BLE_GAP_EVENT_ADV_COMPLETE:

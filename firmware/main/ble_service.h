@@ -4,6 +4,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "notification.h"
 
 // Event types posted to the UI queue
 typedef enum {
@@ -16,9 +17,9 @@ typedef enum {
 
 typedef struct {
     ble_evt_type_t type;
-    char id[48];
-    char project[32];
-    char message[64];
+    char id[NOTIF_MAX_ID_LEN];
+    char project[NOTIF_MAX_PROJ_LEN];
+    char message[NOTIF_MAX_MSG_LEN];
 } ble_evt_t;
 
 // Initialize NimBLE stack and GATT server.

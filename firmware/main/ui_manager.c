@@ -25,6 +25,7 @@ static lv_obj_t *s_list_container = NULL;
 static void rebuild_ui(void);
 
 void ui_manager_init(void) {
+    _lock_init(&s_lock);
     notif_store_init(&s_store);
     s_screen = lv_screen_active();
 
@@ -79,7 +80,7 @@ static void rebuild_ui(void) {
         if (!n) continue;
 
         lv_obj_t *row = lv_label_create(s_list_container);
-        char buf[96];
+        char buf[104];
         snprintf(buf, sizeof(buf), "> %s\n  %s", n->project, n->message);
         lv_label_set_text(row, buf);
         lv_label_set_long_mode(row, LV_LABEL_LONG_CLIP);
