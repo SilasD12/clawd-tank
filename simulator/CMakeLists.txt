@@ -24,6 +24,8 @@ add_executable(clawd-tank-sim
     sim_display.c
     sim_screenshot.c
     sim_events.c
+    sim_ble_parse.c
+    sim_socket.c
     cjson/cJSON.c
     # Shared firmware sources (compiled unmodified)
     ${FIRMWARE_DIR}/scene.c
