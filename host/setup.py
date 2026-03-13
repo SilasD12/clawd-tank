@@ -1,7 +1,7 @@
 # host/setup.py — py2app configuration for Clawd Tank menubar app
 from setuptools import setup
 
-APP = ["clawd_tank_menubar/app.py"]
+APP = ["launcher.py"]
 DATA_FILES = []
 OPTIONS = {
     "argv_emulation": False,
