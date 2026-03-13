@@ -350,9 +350,9 @@ async def test_transport_sender_replays_active_on_initial_connect():
     except asyncio.CancelledError:
         pass
 
-    # Calls: sync_time, then replay (1 notification)
+    # Calls: sync_time, then replay (1 notification) = exactly 2
     write_calls = mock_transport.write_notification.call_args_list
-    assert len(write_calls) >= 2
+    assert len(write_calls) == 2
     # Second call should be the replayed notification
     replayed = json.loads(write_calls[1][0][0])
     assert replayed["action"] == "add"
