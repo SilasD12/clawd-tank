@@ -7,15 +7,27 @@
 static const char *TAG = "rgb_led";
 
 #define RGB_LED_GPIO    8
-#define FADE_STEP_MS    30   /* timer period for fade-out */
+#define STEP_MS         30   /* timer period */
 
 static led_strip_handle_t s_strip = NULL;
+static esp_timer_handle_t s_timer = NULL;
 
-/* Flash state */
-static esp_timer_handle_t s_fade_timer = NULL;
-static uint8_t s_target_r, s_target_g, s_target_b;
-static int s_fade_steps_left;
-static int s_fade_total_steps;
+/* Color cycling state */
+static int s_steps_left;
+
+/* Palette of colors to cycle through */
+static const uint8_t s_palette[][3] = {
+    {255, 100,  10},  /* warm orange */
+    { 80,  40, 255},  /* purple */
+    { 10, 200, 255},  /* cyan */
+    {255,  40, 100},  /* pink */
+    {255, 200,  10},  /* gold */
+    { 40, 255, 120},  /* green */
+};
+#define PALETTE_SIZE (sizeof(s_palette) / sizeof(s_palette[0]))
+
+/* Steps per color in the cycle */
+#define STEPS_PER_COLOR 12
 
 static void apply_color(uint8_t r, uint8_t g, uint8_t b)
 {
@@ -24,22 +36,39 @@ static void apply_color(uint8_t r, uint8_t g, uint8_t b)
     led_strip_refresh(s_strip);
 }
 
-static void fade_timer_cb(void *arg)
+static void timer_cb(void *arg)
 {
     (void)arg;
-    s_fade_steps_left--;
+    s_steps_left--;
 
-    if (s_fade_steps_left <= 0) {
+    if (s_steps_left <= 0) {
         apply_color(0, 0, 0);
-        esp_timer_stop(s_fade_timer);
+        esp_timer_stop(s_timer);
         return;
     }
 
-    /* Linear fade out */
-    float ratio = (float)s_fade_steps_left / (float)s_fade_total_steps;
-    uint8_t r = (uint8_t)(s_target_r * ratio);
-    uint8_t g = (uint8_t)(s_target_g * ratio);
-    uint8_t b = (uint8_t)(s_target_b * ratio);
+    /* Which color pair are we interpolating between? */
+    int color_idx = s_steps_left / STEPS_PER_COLOR;
+    int step_in_color = s_steps_left % STEPS_PER_COLOR;
+
+    int from = color_idx % PALETTE_SIZE;
+    int to = (color_idx + 1) % PALETTE_SIZE;
+
+    /* Interpolate from -> to within this segment */
+    float t = (float)step_in_color / (float)STEPS_PER_COLOR;
+    uint8_t r = (uint8_t)(s_palette[from][0] * (1.0f - t) + s_palette[to][0] * t);
+    uint8_t g = (uint8_t)(s_palette[from][1] * (1.0f - t) + s_palette[to][1] * t);
+    uint8_t b = (uint8_t)(s_palette[from][2] * (1.0f - t) + s_palette[to][2] * t);
+
+    /* Fade out over the last quarter */
+    int total = PALETTE_SIZE * STEPS_PER_COLOR;
+    if (s_steps_left < total / 4) {
+        float fade = (float)s_steps_left / (float)(total / 4);
+        r = (uint8_t)(r * fade);
+        g = (uint8_t)(g * fade);
+        b = (uint8_t)(b * fade);
+    }
+
     apply_color(r, g, b);
 }
 
@@ -67,42 +96,36 @@ void rgb_led_init(void)
     /* Start dark */
     led_strip_clear(s_strip);
 
-    /* Create fade timer (one-shot repeated manually) */
     esp_timer_create_args_t timer_args = {
-        .callback = fade_timer_cb,
-        .name = "rgb_fade",
+        .callback = timer_cb,
+        .name = "rgb_cycle",
     };
-    esp_timer_create(&timer_args, &s_fade_timer);
+    esp_timer_create(&timer_args, &s_timer);
 
     ESP_LOGI(TAG, "RGB LED initialized on GPIO%d", RGB_LED_GPIO);
 }
 
 void rgb_led_set(uint8_t r, uint8_t g, uint8_t b)
 {
-    /* Stop any running flash */
-    if (s_fade_timer) {
-        esp_timer_stop(s_fade_timer);
+    if (s_timer) {
+        esp_timer_stop(s_timer);
     }
     apply_color(r, g, b);
 }
 
 void rgb_led_flash(uint8_t r, uint8_t g, uint8_t b, int duration_ms)
 {
-    if (!s_strip || !s_fade_timer) return;
+    (void)r; (void)g; (void)b; (void)duration_ms;
+    if (!s_strip || !s_timer) return;
 
-    /* Stop previous flash if running */
-    esp_timer_stop(s_fade_timer);
+    /* Stop previous animation */
+    esp_timer_stop(s_timer);
 
-    s_target_r = r;
-    s_target_g = g;
-    s_target_b = b;
-    s_fade_total_steps = duration_ms / FADE_STEP_MS;
-    if (s_fade_total_steps < 2) s_fade_total_steps = 2;
-    s_fade_steps_left = s_fade_total_steps;
+    /* Total steps = full palette cycle */
+    s_steps_left = PALETTE_SIZE * STEPS_PER_COLOR;
 
-    /* Start at full brightness */
-    apply_color(r, g, b);
+    /* Start with the first palette color */
+    apply_color(s_palette[0][0], s_palette[0][1], s_palette[0][2]);
 
-    /* Start periodic fade timer */
-    esp_timer_start_periodic(s_fade_timer, FADE_STEP_MS * 1000); /* µs */
+    esp_timer_start_periodic(s_timer, STEP_MS * 1000); /* µs */
 }
