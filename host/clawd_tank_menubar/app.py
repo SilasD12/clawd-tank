@@ -131,7 +131,7 @@ class ClawdTankApp(rumps.App, DaemonObserver):
     async def _read_device_config(self):
         """Read config from device and update menu."""
         if self._daemon:
-            config = await self._daemon._ble.read_config()
+            config = await self._daemon.read_config()
             if config:
                 self._current_config = config
                 self._schedule_menu_update()
@@ -196,7 +196,7 @@ class ClawdTankApp(rumps.App, DaemonObserver):
         if self._loop and self._connected:
             payload = json.dumps({"brightness": value})
             asyncio.run_coroutine_threadsafe(
-                self._daemon._ble.write_config(payload), self._loop
+                self._daemon.write_config(payload), self._loop
             )
 
     def _on_sleep_timeout_select(self, sender):
@@ -209,7 +209,7 @@ class ClawdTankApp(rumps.App, DaemonObserver):
         if self._loop and self._connected:
             payload = json.dumps({"sleep_timeout": seconds})
             asyncio.run_coroutine_threadsafe(
-                self._daemon._ble.write_config(payload), self._loop
+                self._daemon.write_config(payload), self._loop
             )
 
     def _on_toggle_login(self, sender):
@@ -222,7 +222,7 @@ class ClawdTankApp(rumps.App, DaemonObserver):
     def _on_reconnect(self, _):
         if self._loop:
             asyncio.run_coroutine_threadsafe(
-                self._daemon._ble.ensure_connected(), self._loop
+                self._daemon.reconnect(), self._loop
             )
 
     def _on_quit(self, _):
