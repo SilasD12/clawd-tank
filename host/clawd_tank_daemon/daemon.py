@@ -94,22 +94,25 @@ class ClawdDaemon:
         self._transports: dict[str, TransportClient] = {}
         self._transport_queues: dict[str, asyncio.Queue] = {}
 
-        if not sim_only:
-            ble = ClawdBleClient(
-                on_disconnect_cb=lambda: self._on_transport_disconnect("ble"),
-                on_connect_cb=lambda: self._on_transport_connect("ble"),
-            )
-            self._transports["ble"] = ble
-            self._transport_queues["ble"] = asyncio.Queue()
+        if headless:
+            # Headless (CLI) mode — create transports from args
+            if not sim_only:
+                ble = ClawdBleClient(
+                    on_disconnect_cb=lambda: self._on_transport_disconnect("ble"),
+                    on_connect_cb=lambda: self._on_transport_connect("ble"),
+                )
+                self._transports["ble"] = ble
+                self._transport_queues["ble"] = asyncio.Queue()
 
-        if sim_port > 0:
-            sim = SimClient(
-                port=sim_port,
-                on_disconnect_cb=lambda: self._on_transport_disconnect("sim"),
-                on_connect_cb=lambda: self._on_transport_connect("sim"),
-            )
-            self._transports["sim"] = sim
-            self._transport_queues["sim"] = asyncio.Queue()
+            if sim_port > 0:
+                sim = SimClient(
+                    port=sim_port,
+                    on_disconnect_cb=lambda: self._on_transport_disconnect("sim"),
+                    on_connect_cb=lambda: self._on_transport_connect("sim"),
+                )
+                self._transports["sim"] = sim
+                self._transport_queues["sim"] = asyncio.Queue()
+        # Menu bar mode (headless=False): transports added later via add_transport()
 
         self._sender_tasks: dict[str, asyncio.Task] = {}
         self._socket = SocketServer(on_message=self._handle_message)
