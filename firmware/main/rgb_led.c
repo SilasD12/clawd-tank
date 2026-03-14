@@ -3,6 +3,7 @@
 #include "led_strip.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include <stdatomic.h>
 
 static const char *TAG = "rgb_led";
 
@@ -12,8 +13,9 @@ static const char *TAG = "rgb_led";
 static led_strip_handle_t s_strip = NULL;
 static esp_timer_handle_t s_timer = NULL;
 
-/* Color cycling state */
-static int s_steps_left;
+/* Color cycling state — atomic for portability to dual-core ESP32 variants
+ * where timer_cb runs on a different core than rgb_led_flash(). */
+static atomic_int s_steps_left;
 
 /* Palette of colors to cycle through */
 static const uint8_t s_palette[][3] = {
