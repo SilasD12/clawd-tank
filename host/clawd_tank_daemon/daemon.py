@@ -139,7 +139,7 @@ class ClawdDaemon:
         elif event == "dismiss":
             self._active_notifications.pop(session_id, None)
 
-        self._update_session_state(event, hook, session_id)
+        self._update_session_state(event, hook, session_id, msg.get("agent_id", ""))
 
         # --- Handle compact: send sweeping oneshot ---
         if event == "compact":
@@ -167,7 +167,10 @@ class ClawdDaemon:
         """Derive the display state from all active session states."""
         if not self._session_states:
             return "sleeping"
-        working_count = sum(1 for s in self._session_states.values() if s["state"] == "working")
+        working_count = sum(
+            1 for s in self._session_states.values()
+            if s["state"] == "working" or s.get("subagents")
+        )
         if working_count > 0:
             return f"working_{min(working_count, 3)}"
         if any(s["state"] == "thinking" for s in self._session_states.values()):
@@ -176,7 +179,7 @@ class ClawdDaemon:
             return "confused"
         return "idle"
 
-    def _update_session_state(self, event: str, hook: str, session_id: str) -> None:
+    def _update_session_state(self, event: str, hook: str, session_id: str, agent_id: str = "") -> None:
         """Update per-session state based on a received event."""
         if not session_id:
             return
@@ -207,12 +210,26 @@ class ClawdDaemon:
             else:
                 if session_id in self._session_states:
                     self._session_states[session_id]["last_event"] = now
+        elif event == "subagent_start":
+            if not agent_id:
+                return
+            self._session_states.setdefault(session_id, {"state": "working", "last_event": now})
+            self._session_states[session_id].setdefault("subagents", set())
+            self._session_states[session_id]["subagents"].add(agent_id)
+            self._session_states[session_id]["last_event"] = now
+        elif event == "subagent_stop":
+            if session_id in self._session_states:
+                subagents = self._session_states[session_id].get("subagents")
+                if subagents is not None:
+                    subagents.discard(agent_id)
+                self._session_states[session_id]["last_event"] = now
 
     def _evict_stale_sessions(self) -> None:
         now = time.time()
         stale = [
             sid for sid, s in self._session_states.items()
             if now - s["last_event"] > self._session_staleness_timeout
+            and not s.get("subagents")
         ]
         for sid in stale:
             logger.info("Evicting stale session: %s", sid[:12])
