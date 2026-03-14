@@ -420,6 +420,9 @@ class ClawdTankApp(rumps.App, DaemonObserver):
             client = await self._sim_process.start()
             if client:
                 await self._daemon.add_transport("sim", client)
+                # Wait for the TCP connection to be established before
+                # sending window commands — ensure_connected retries
+                await client.ensure_connected()
                 prefs = load_preferences()
                 if prefs.get("sim_window_visible", True):
                     await self._sim_process.show_window()
