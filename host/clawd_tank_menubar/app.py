@@ -44,7 +44,7 @@ class ClawdTankApp(rumps.App, DaemonObserver):
         prefs = load_preferences()
 
         # --- BLE submenu ---
-        self._ble_menu = rumps.MenuItem("BLE  \u25CB Disabled")
+        self._ble_menu = rumps.MenuItem("BLE \u2014 Disabled")
         self._ble_status = rumps.MenuItem("Status: Initializing...")
         self._ble_status.set_callback(None)
         self._ble_enabled_toggle = rumps.MenuItem(
@@ -61,7 +61,7 @@ class ClawdTankApp(rumps.App, DaemonObserver):
         ])
 
         # --- Simulator submenu ---
-        self._sim_menu = rumps.MenuItem("Simulator  \u25CB Disabled")
+        self._sim_menu = rumps.MenuItem("Simulator \u2014 Disabled")
         self._sim_status = rumps.MenuItem("Status: Initializing...")
         self._sim_status.set_callback(None)
         self._sim_enabled_toggle = rumps.MenuItem(
@@ -219,32 +219,32 @@ class ClawdTankApp(rumps.App, DaemonObserver):
 
         # --- BLE submenu state ---
         if not self._ble_enabled_toggle.state:
-            self._ble_menu.title = "BLE  \u25CB Disabled"
+            self._ble_menu.title = "BLE \u2014 Disabled"
             self._ble_status.title = "Status: Disabled"
             self._ble_reconnect.set_callback(None)
         else:
             ble_connected = self._transport_status.get("ble", False)
             if ble_connected:
-                self._ble_menu.title = "BLE  \u25CF Connected"
+                self._ble_menu.title = "BLE \U0001F7E2 Connected"
                 self._ble_status.title = "Status: Connected"
             else:
-                self._ble_menu.title = "BLE  \u25CF Connecting..."
+                self._ble_menu.title = "BLE \U0001F7E1 Connecting..."
                 self._ble_status.title = "Status: Connecting..."
             self._ble_reconnect.set_callback(self._on_reconnect)
 
         # --- Simulator submenu state ---
         if not self._sim_enabled_toggle.state:
-            self._sim_menu.title = "Simulator  \u25CB Disabled"
+            self._sim_menu.title = "Simulator \u2014 Disabled"
             self._sim_status.title = "Status: Disabled"
             self._sim_window_toggle.set_callback(None)
             self._sim_pinned_toggle.set_callback(None)
         else:
             sim_connected = self._transport_status.get("sim", False)
             if sim_connected:
-                self._sim_menu.title = "Simulator  \u25CF Running"
+                self._sim_menu.title = "Simulator \U0001F7E2 Running"
                 self._sim_status.title = "Status: Running"
             else:
-                self._sim_menu.title = "Simulator  \u25CF Connecting..."
+                self._sim_menu.title = "Simulator \U0001F7E1 Connecting..."
                 self._sim_status.title = "Status: Connecting..."
             self._sim_window_toggle.set_callback(self._on_toggle_sim_window)
             self._sim_pinned_toggle.set_callback(self._on_toggle_sim_pinned)
