@@ -37,6 +37,13 @@ static uint32_t sdl_tick_cb(void)
     return SDL_GetTicks();
 }
 
+/* ---- Hit-test callback for borderless window dragging ---- */
+static SDL_HitTestResult hit_test_cb(SDL_Window *win, const SDL_Point *area, void *data)
+{
+    (void)win; (void)area; (void)data;
+    return SDL_HITTEST_DRAGGABLE;
+}
+
 /* ---- LVGL flush callback ---- */
 
 static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
@@ -76,12 +83,13 @@ lv_display_t *sim_display_init(bool headless, int scale)
             "Clawd Tank Simulator",
             SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
             SIM_LCD_H_RES * s_scale, SIM_LCD_V_RES * s_scale,
-            0);
+            SDL_WINDOW_BORDERLESS);
         if (!s_window) {
             fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
             exit(1);
         }
 
+        SDL_SetWindowHitTest(s_window, hit_test_cb, NULL);
         SDL_RaiseWindow(s_window);
 
         s_renderer = SDL_CreateRenderer(s_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
