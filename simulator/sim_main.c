@@ -14,7 +14,7 @@
 
 /* ---- CLI options ---- */
 static bool     opt_headless = false;
-static int      opt_scale = 3;
+static int      opt_scale = 2;
 static const char *opt_events = NULL;
 static const char *opt_scenario = NULL;
 static const char *opt_screenshot_dir = NULL;
@@ -30,7 +30,7 @@ static void print_usage(void)
         "\n"
         "Display:\n"
         "  --headless              Run without SDL2 window\n"
-        "  --scale <N>             Window scale factor (default: 3)\n"
+        "  --scale <N>             Window scale factor (default: 2)\n"
         "\n"
         "Events:\n"
         "  --events '<commands>'   Inline event string (semicolon-separated)\n"

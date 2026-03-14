@@ -56,6 +56,8 @@ static volatile bool s_pending_config_update = false;
 
 /* ---- TCP listener thread ---- */
 static int s_listen_fd = -1;
+static int s_client_fd = -1;  /* current client, for shutdown */
+static pthread_mutex_t s_client_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t s_thread;
 static bool s_thread_started = false;
 static volatile bool s_running = false;
@@ -100,6 +102,10 @@ static void handle_config_action(const char *buf, uint16_t len, int client_fd) {
 
 static void handle_client(int client_fd) {
     printf("[tcp] Client connected\n");
+
+    pthread_mutex_lock(&s_client_mutex);
+    s_client_fd = client_fd;
+    pthread_mutex_unlock(&s_client_mutex);
 
     ble_evt_t connect_evt = { .type = BLE_EVT_CONNECTED };
     queue_push(&connect_evt);
@@ -149,6 +155,10 @@ static void handle_client(int client_fd) {
             buf_len = 0;
         }
     }
+
+    pthread_mutex_lock(&s_client_mutex);
+    s_client_fd = -1;
+    pthread_mutex_unlock(&s_client_mutex);
 
     printf("[tcp] Client disconnected\n");
     ble_evt_t disconnect_evt = { .type = BLE_EVT_DISCONNECTED };
@@ -237,6 +247,14 @@ bool sim_socket_process(void) {
 
 void sim_socket_shutdown(void) {
     s_running = false;
+    /* Close the client socket to unblock recv() in handle_client */
+    pthread_mutex_lock(&s_client_mutex);
+    if (s_client_fd >= 0) {
+        shutdown(s_client_fd, SHUT_RDWR);
+        s_client_fd = -1;
+    }
+    pthread_mutex_unlock(&s_client_mutex);
+    /* Close listen socket to unblock accept() in listener_thread */
     if (s_listen_fd >= 0) {
         shutdown(s_listen_fd, SHUT_RDWR);
         close(s_listen_fd);
