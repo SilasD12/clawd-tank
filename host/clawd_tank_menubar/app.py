@@ -278,7 +278,7 @@ class ClawdTankApp(rumps.App, DaemonObserver):
     def _on_toggle_simulator(self, sender):
         """Toggle the simulator transport on/off."""
         sender.state = not sender.state
-        save_preferences(prefs={"sim_enabled": sender.state})
+        save_preferences(updates={"sim_enabled": sender.state})
 
         if sender.state:
             self._transport_status["sim"] = False
