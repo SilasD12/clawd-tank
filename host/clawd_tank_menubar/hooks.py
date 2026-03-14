@@ -145,18 +145,25 @@ def install_notify_script() -> None:
 
 
 def are_hooks_installed() -> bool:
-    """Check if Claude Code settings already have Clawd Tank hooks."""
+    """Check if Claude Code settings have all required Clawd Tank hooks."""
     if not CLAUDE_SETTINGS_PATH.exists():
         return False
     try:
         settings = json.loads(CLAUDE_SETTINGS_PATH.read_text())
         hooks = settings.get("hooks", {})
-        # Check if any hook points to our script
-        for hook_list in hooks.values():
-            for entry in hook_list:
+        # Every hook event in HOOKS_CONFIG must be present and point to our script
+        for event_name in HOOKS_CONFIG:
+            if event_name not in hooks:
+                return False
+            found = False
+            for entry in hooks[event_name]:
                 for h in entry.get("hooks", []):
                     if HOOK_COMMAND in h.get("command", ""):
-                        return True
+                        found = True
+                        break
+            if not found:
+                return False
+        return True
     except (json.JSONDecodeError, OSError):
         pass
     return False

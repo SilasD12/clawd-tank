@@ -251,20 +251,22 @@ class ClawdTankApp(rumps.App, DaemonObserver):
                 self._daemon.set_session_timeout(seconds)
 
     def _on_install_hooks(self, sender):
-        if hooks.are_hooks_installed():
-            rumps.alert(
-                title="Hooks Already Installed",
-                message="Claude Code hooks are already configured. "
-                        "Restart your Claude Code sessions to pick up any changes.",
-            )
-            return
+        was_installed = hooks.are_hooks_installed()
+        hooks.install_notify_script()
         hooks.install_hooks()
         sender.state = True
-        rumps.alert(
-            title="Hooks Installed",
-            message="Claude Code hooks have been added to ~/.claude/settings.json. "
-                    "Restart your Claude Code sessions for the hooks to take effect.",
-        )
+        if was_installed:
+            rumps.alert(
+                title="Hooks Updated",
+                message="Claude Code hooks have been updated. "
+                        "Restart your Claude Code sessions for the changes to take effect.",
+            )
+        else:
+            rumps.alert(
+                title="Hooks Installed",
+                message="Claude Code hooks have been added to ~/.claude/settings.json. "
+                        "Restart your Claude Code sessions for the hooks to take effect.",
+            )
 
     def _on_toggle_login(self, sender):
         if launchd.is_enabled():
