@@ -246,8 +246,7 @@ class ClawdDaemon:
         """Called by a transport client on disconnect."""
         logger.warning("Transport '%s' disconnected", name)
         if self._observer:
-            any_connected = any(t.is_connected for t in self._transports.values())
-            self._observer.on_connection_change(any_connected, name)
+            self._observer.on_connection_change(False, name)
 
     async def _sync_time_for(self, transport) -> None:
         """Send current host time and timezone to a transport."""
