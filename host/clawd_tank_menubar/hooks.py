@@ -36,11 +36,21 @@ NOTIFY_SCRIPT = textwrap.dedent('''\
         event_name = hook.get("hook_event_name", "")
         session_id = hook.get("session_id", "")
 
+        if event_name == "SessionStart":
+            return {"event": "session_start", "session_id": session_id}
+
+        if event_name == "PreToolUse":
+            return {"event": "tool_use", "session_id": session_id}
+
+        if event_name == "PreCompact":
+            return {"event": "compact", "session_id": session_id}
+
         if event_name == "Stop":
             cwd = hook.get("cwd", "")
             project = Path(cwd).name if cwd else "unknown"
             return {
                 "event": "add",
+                "hook": "Stop",
                 "session_id": session_id,
                 "project": project or "unknown",
                 "message": "Waiting for input",
@@ -53,13 +63,17 @@ NOTIFY_SCRIPT = textwrap.dedent('''\
             project = Path(cwd).name if cwd else "unknown"
             return {
                 "event": "add",
+                "hook": "Notification",
                 "session_id": session_id,
                 "project": project or "unknown",
                 "message": hook.get("message", "Waiting for input"),
             }
 
-        if event_name in ("UserPromptSubmit", "SessionEnd"):
-            return {"event": "dismiss", "session_id": session_id}
+        if event_name == "UserPromptSubmit":
+            return {"event": "dismiss", "hook": "UserPromptSubmit", "session_id": session_id}
+
+        if event_name == "SessionEnd":
+            return {"event": "dismiss", "hook": "SessionEnd", "session_id": session_id}
 
         return None
 
@@ -95,6 +109,9 @@ NOTIFY_SCRIPT = textwrap.dedent('''\
 HOOK_COMMAND = str(NOTIFY_SCRIPT_PATH)
 
 HOOKS_CONFIG = {
+    "SessionStart": [
+        {"hooks": [{"type": "command", "command": HOOK_COMMAND}]}
+    ],
     "Stop": [
         {"hooks": [{"type": "command", "command": HOOK_COMMAND}]}
     ],
@@ -105,6 +122,12 @@ HOOKS_CONFIG = {
         }
     ],
     "UserPromptSubmit": [
+        {"hooks": [{"type": "command", "command": HOOK_COMMAND}]}
+    ],
+    "PreToolUse": [
+        {"hooks": [{"type": "command", "command": HOOK_COMMAND}]}
+    ],
+    "PreCompact": [
         {"hooks": [{"type": "command", "command": HOOK_COMMAND}]}
     ],
     "SessionEnd": [
