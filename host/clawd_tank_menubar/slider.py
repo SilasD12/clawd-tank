@@ -50,16 +50,16 @@ def create_slider_menu_item(label: str, min_val: int = 0, max_val: int = 255,
     instance._on_change = on_change
     instance._last_send_time = 0.0
 
-    # Create container view — extra height for top/bottom padding
-    width = 250
-    height = 64
+    # Create container view — wide enough to fill menu, tall enough for thumb
+    width = 300
+    height = 68
     view = AppKit.NSView.alloc().initWithFrame_(
         AppKit.NSMakeRect(0, 0, width, height)
     )
 
-    # Label (NSView y=0 is bottom; push label up for top padding)
+    # Label (NSView y=0 is bottom)
     label_field = AppKit.NSTextField.labelWithString_(label)
-    label_field.setFrame_(AppKit.NSMakeRect(16, 38, 120, 16))
+    label_field.setFrame_(AppKit.NSMakeRect(16, 40, 150, 16))
     label_field.setFont_(AppKit.NSFont.systemFontOfSize_(13))
     view.addSubview_(label_field)
 
@@ -67,14 +67,14 @@ def create_slider_menu_item(label: str, min_val: int = 0, max_val: int = 255,
     instance._value_label = AppKit.NSTextField.labelWithString_(
         f"{int(initial / 255 * 100)}%"
     )
-    instance._value_label.setFrame_(AppKit.NSMakeRect(width - 50, 38, 34, 16))
+    instance._value_label.setFrame_(AppKit.NSMakeRect(width - 56, 40, 40, 16))
     instance._value_label.setFont_(AppKit.NSFont.systemFontOfSize_(11))
     instance._value_label.setAlignment_(AppKit.NSTextAlignmentRight)
     view.addSubview_(instance._value_label)
 
-    # Slider (bottom portion with padding)
+    # Slider — give it 26px height so the thumb isn't clipped
     instance._slider = AppKit.NSSlider.alloc().initWithFrame_(
-        AppKit.NSMakeRect(16, 10, width - 32, 20)
+        AppKit.NSMakeRect(16, 8, width - 32, 26)
     )
     instance._slider.setMinValue_(min_val)
     instance._slider.setMaxValue_(max_val)
