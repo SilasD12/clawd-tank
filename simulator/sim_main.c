@@ -381,7 +381,7 @@ int main(int argc, char *argv[])
     lv_init();
 
     /* 2. Init display */
-    sim_display_init(opt_headless, opt_scale);
+    sim_display_init(opt_headless, opt_scale, false);
 
     /* 3. Init events */
     if (opt_events) sim_events_init_inline(opt_events);

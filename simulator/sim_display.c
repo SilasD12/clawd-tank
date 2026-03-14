@@ -13,6 +13,7 @@ static uint16_t s_framebuffer[SIM_LCD_H_RES * SIM_LCD_V_RES];
 /* Mode flag */
 static bool s_headless = false;
 static bool s_quit = false;
+static bool s_hidden = false;
 
 /* Simulated tick for headless mode */
 static uint32_t s_sim_tick = 0;
@@ -80,7 +81,7 @@ static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 
 /* ---- Init ---- */
 
-lv_display_t *sim_display_init(bool headless, int scale)
+lv_display_t *sim_display_init(bool headless, int scale, bool bordered)
 {
     s_headless = headless;
     s_scale = scale > 0 ? scale : 3;
@@ -98,17 +99,20 @@ lv_display_t *sim_display_init(bool headless, int scale)
         int win_w = SIM_LCD_H_RES * s_scale + border * 2;
         int win_h = SIM_LCD_V_RES * s_scale + border * 2;
 
+        Uint32 flags = bordered ? 0 : SDL_WINDOW_BORDERLESS;
         s_window = SDL_CreateWindow(
             "Clawd Tank Simulator",
             SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
             win_w, win_h,
-            SDL_WINDOW_BORDERLESS);
+            flags);
         if (!s_window) {
             fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
             exit(1);
         }
 
-        SDL_SetWindowHitTest(s_window, hit_test_cb, NULL);
+        if (!bordered) {
+            SDL_SetWindowHitTest(s_window, hit_test_cb, NULL);
+        }
         SDL_RaiseWindow(s_window);
 
         s_renderer = SDL_CreateRenderer(s_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -155,7 +159,7 @@ uint16_t *sim_display_get_framebuffer(void)
 
 void sim_display_tick(void)
 {
-    if (s_headless) return;
+    if (s_headless || s_hidden) return;
 
     int border = LED_BORDER_PX * s_scale;
 
@@ -192,6 +196,33 @@ void sim_display_set_pinned(bool pinned)
 {
     if (!s_window) return;
     SDL_SetWindowAlwaysOnTop(s_window, pinned ? SDL_TRUE : SDL_FALSE);
+}
+
+/* ---- Show / Hide / Clear-quit ---- */
+
+void sim_display_show_window(void)
+{
+    if (!s_window) return;
+    SDL_ShowWindow(s_window);
+    SDL_RaiseWindow(s_window);
+    s_hidden = false;
+}
+
+void sim_display_hide_window(void)
+{
+    if (!s_window) return;
+    SDL_HideWindow(s_window);
+    s_hidden = true;
+}
+
+bool sim_display_is_hidden(void)
+{
+    return s_hidden;
+}
+
+void sim_display_clear_quit(void)
+{
+    s_quit = false;
 }
 
 /* ---- Shutdown ---- */
