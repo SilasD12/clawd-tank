@@ -149,25 +149,28 @@ async def test_replay_active_sends_all_active_notifications():
 
     await daemon._replay_active_for(mock_transport)
 
-    # All three active notifications should have been sent
-    assert mock_transport.write_notification.call_count == 3
-    # Verify payloads contain the right session IDs
+    # 3 notifications + 1 set_status call
+    assert mock_transport.write_notification.call_count == 4
+    # Verify payloads contain the right session IDs (exclude set_status payload)
     written_args = [call.args[0] for call in mock_transport.write_notification.call_args_list]
     import json
-    written_ids = {json.loads(p)["id"] for p in written_args}
+    written_ids = {json.loads(p)["id"] for p in written_args if "id" in json.loads(p)}
     assert written_ids == {"s1", "s2", "s3"}
 
 
 @pytest.mark.asyncio
 async def test_replay_active_empty_store_sends_nothing():
-    """_replay_active_for with no active notifications must not call write_notification."""
+    """_replay_active_for with no active notifications only sends set_status."""
     daemon = ClawdDaemon()
     mock_transport = AsyncMock()
     mock_transport.write_notification = AsyncMock(return_value=True)
 
     await daemon._replay_active_for(mock_transport)
 
-    mock_transport.write_notification.assert_not_called()
+    # Only the set_status payload is sent even with no notifications
+    assert mock_transport.write_notification.call_count == 1
+    payload = json.loads(mock_transport.write_notification.call_args[0][0])
+    assert payload["action"] == "set_status"
 
 
 @pytest.mark.asyncio
@@ -182,9 +185,9 @@ async def test_replay_active_skips_unknown_events():
         "bad": {"event": "bogus", "session_id": "bad"},
     }
 
-    # Should not raise — bad entry is skipped, valid one is sent
+    # Should not raise — bad entry is skipped, valid one is sent, plus set_status
     await daemon._replay_active_for(mock_transport)
-    assert mock_transport.write_notification.call_count == 1
+    assert mock_transport.write_notification.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -220,8 +223,9 @@ async def test_replay_active_concurrent_mutation_is_safe():
     await asyncio.gather(daemon._replay_active_for(mock_transport), mutate())
 
     # Replay used a snapshot so it sent s1 and s2 (the state at snapshot time)
+    # Plus the set_status payload at the end
     import json
-    replayed_ids = {json.loads(p)["id"] for p in write_calls}
+    replayed_ids = {json.loads(p)["id"] for p in write_calls if "id" in json.loads(p)}
     assert replayed_ids == {"s1", "s2"}
 
 
@@ -285,9 +289,9 @@ async def test_ble_write_failure_replays_multiple_active():
     async def mock_write(payload):
         call_count[0] += 1
         write_calls.append(payload)
-        # Fail on the 4th write (the queued dismiss).
-        # Writes 1-3 are: initial sync_time, initial replay s1, initial replay s2.
-        if call_count[0] == 4:
+        # Fail on the 5th write (the queued dismiss).
+        # Writes 1-4 are: initial sync_time, initial replay s1, initial replay s2, set_status.
+        if call_count[0] == 5:
             return False
         return True
 
@@ -312,9 +316,9 @@ async def test_ble_write_failure_replays_multiple_active():
     except asyncio.CancelledError:
         pass
 
-    # write_calls: [0]=sync_time, [1]=replay s1, [2]=replay s2,
-    #              [3]=failing dismiss, [4+]=replay writes after failure
-    replayed_ids = {json.loads(p).get("id") for p in write_calls[4:] if json.loads(p).get("id")}
+    # write_calls: [0]=sync_time, [1]=replay s1, [2]=replay s2, [3]=set_status,
+    #              [4]=failing dismiss, [5+]=replay writes after failure
+    replayed_ids = {json.loads(p).get("id") for p in write_calls[5:] if json.loads(p).get("id")}
     assert "s1" in replayed_ids
     assert "s2" in replayed_ids
 
@@ -362,13 +366,16 @@ async def test_transport_sender_replays_active_on_initial_connect():
     except asyncio.CancelledError:
         pass
 
-    # Calls: sync_time, then replay (1 notification) = exactly 2
+    # Calls: sync_time, replay (1 notification), set_status = exactly 3
     write_calls = mock_transport.write_notification.call_args_list
-    assert len(write_calls) == 2
+    assert len(write_calls) == 3
     # Second call should be the replayed notification
     replayed = json.loads(write_calls[1][0][0])
     assert replayed["action"] == "add"
     assert replayed["id"]  # has an id field
+    # Third call should be the set_status
+    status = json.loads(write_calls[2][0][0])
+    assert status["action"] == "set_status"
 
 
 # --- add_transport / remove_transport ---

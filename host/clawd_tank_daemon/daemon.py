@@ -121,6 +121,7 @@ class ClawdDaemon:
         self._headless = headless
         self._session_states: dict[str, dict] = {}
         self._last_display_state: str = "sleeping"
+        self._session_staleness_timeout: float = 600.0
 
     async def _handle_message(self, msg: dict) -> None:
         """Handle a message from clawd-tank-notify via the socket."""
@@ -136,6 +137,19 @@ class ClawdDaemon:
             self._active_notifications.pop(session_id, None)
 
         self._update_session_state(event, hook, session_id)
+
+        # --- Handle compact: send sweeping oneshot ---
+        if event == "compact":
+            sweeping_payload = json.dumps({"action": "set_status", "status": "sweeping"})
+            for transport in self._transports.values():
+                if transport.is_connected:
+                    await transport.write_notification(sweeping_payload)
+            computed = self._compute_display_state()
+            fallback_payload = json.dumps({"action": "set_status", "status": computed})
+            for transport in self._transports.values():
+                if transport.is_connected:
+                    await transport.write_notification(fallback_payload)
+            self._last_display_state = computed
 
         for q in self._transport_queues.values():
             await q.put(msg)
@@ -191,6 +205,16 @@ class ClawdDaemon:
                 if session_id in self._session_states:
                     self._session_states[session_id]["last_event"] = now
 
+    def _evict_stale_sessions(self) -> None:
+        now = time.time()
+        stale = [
+            sid for sid, s in self._session_states.items()
+            if now - s["last_event"] > self._session_staleness_timeout
+        ]
+        for sid in stale:
+            logger.info("Evicting stale session: %s", sid[:12])
+            del self._session_states[sid]
+
     async def _broadcast_display_state_if_changed(self) -> None:
         """Broadcast a set_status action to all connected transports if display state changed."""
         new_state = self._compute_display_state()
@@ -201,6 +225,16 @@ class ClawdDaemon:
         for transport in self._transports.values():
             if transport.is_connected:
                 await transport.write_notification(payload)
+
+    async def _staleness_checker(self) -> None:
+        while self._running:
+            await asyncio.sleep(30)
+            self._evict_stale_sessions()
+            await self._broadcast_display_state_if_changed()
+
+    def set_session_timeout(self, seconds: int) -> None:
+        self._session_staleness_timeout = float(seconds)
+        logger.info("Session staleness timeout set to %ds", seconds)
 
     def _on_transport_connect(self, name: str) -> None:
         """Called by a transport client on successful connection."""
@@ -238,8 +272,15 @@ class ClawdDaemon:
                 payload = daemon_message_to_ble_payload(msg)
             except ValueError:
                 continue
+            if payload is None:
+                continue
             await transport.write_notification(payload)
             await asyncio.sleep(0.05)
+
+        # Send current display state
+        state = self._compute_display_state()
+        status_payload = json.dumps({"action": "set_status", "status": state})
+        await transport.write_notification(status_payload)
 
     async def _transport_sender(self, name: str) -> None:
         """Process pending messages and send them over a named transport."""
@@ -289,6 +330,13 @@ class ClawdDaemon:
         logger.info("Shutting down...")
         self._running = False
         self._shutdown_event.set()
+
+        if hasattr(self, '_staleness_task'):
+            self._staleness_task.cancel()
+            try:
+                await self._staleness_task
+            except asyncio.CancelledError:
+                pass
 
         for task in self._sender_tasks.values():
             task.cancel()
@@ -376,6 +424,8 @@ class ClawdDaemon:
         for name in self._transports:
             # Each sender handles its own connect via ensure_connected()
             self._sender_tasks[name] = asyncio.create_task(self._transport_sender(name))
+
+        self._staleness_task = asyncio.create_task(self._staleness_checker())
 
         await self._shutdown_event.wait()
 

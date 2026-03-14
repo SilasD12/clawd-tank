@@ -1,6 +1,7 @@
 """Tests for daemon session state tracking and display state computation."""
 
 import asyncio
+import json
 import time
 import pytest
 from unittest.mock import AsyncMock, MagicMock
@@ -151,3 +152,37 @@ async def test_last_display_state_tracks_changes():
     assert d._last_display_state == "idle"
     await d._handle_message({"event": "dismiss", "hook": "SessionEnd", "session_id": "s1"})
     assert d._last_display_state == "sleeping"
+
+
+# --- Task 5: staleness eviction and compact handling ---
+
+def test_staleness_evicts_old_sessions():
+    d = make_daemon()
+    d._session_states["s1"] = {"state": "idle", "last_event": time.time() - 9999}
+    d._session_staleness_timeout = 1
+    d._evict_stale_sessions()
+    assert "s1" not in d._session_states
+
+def test_staleness_keeps_fresh_sessions():
+    d = make_daemon()
+    d._session_states["s1"] = {"state": "idle", "last_event": time.time()}
+    d._session_staleness_timeout = 600
+    d._evict_stale_sessions()
+    assert "s1" in d._session_states
+
+@pytest.mark.asyncio
+async def test_compact_triggers_sweeping():
+    d = make_daemon()
+    d._session_states["s1"] = {"state": "working", "last_event": time.time()}
+    transport = AsyncMock()
+    transport.is_connected = True
+    d._transports["test"] = transport
+    d._transport_queues["test"] = asyncio.Queue()
+    d._last_display_state = "working_1"
+
+    await d._handle_message({"event": "compact", "session_id": "s1"})
+
+    calls = transport.write_notification.call_args_list
+    payloads = [json.loads(c[0][0]) for c in calls]
+    assert any(p.get("status") == "sweeping" for p in payloads)
+    assert any(p.get("status") == "working_1" for p in payloads)
