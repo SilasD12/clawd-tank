@@ -21,8 +21,8 @@ typedef enum {
     UI_STATE_DISCONNECTED,
 } ui_state_t;
 
-#define SCENE_FULL_WIDTH   320
-#define SCENE_NOTIF_WIDTH  107
+#define SCENE_FULL_WIDTH   240
+#define SCENE_NOTIF_WIDTH   80
 #define SCENE_ANIM_MS      400
 
 /* ---------- Module state ---------- */
