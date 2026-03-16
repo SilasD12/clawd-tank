@@ -199,7 +199,7 @@ The daemon tracks per-session state and computes display state sent to the devic
 - **Notification limit**: 8 simultaneous (ring buffer, oldest dropped on overflow).
 - **LVGL version**: 9.5.0 (not 8.x — API differs significantly).
 - **Sprite format**: RLE-compressed RGB565 arrays with transparency key color `0x18C5`. Auto-cropped with symmetric horizontal padding. Firmware decodes to RGB565A8 (3 bytes/pixel); simulator decodes to ARGB8888 (4 bytes/pixel). One frame buffer per active slot, lazy-allocated.
-- **RGB LED**: Onboard WS2812B on GPIO8, driven via `espressif/led_strip` component. Flashes on notifications.
+- **LED**: Internal LED on GPIO19 (not RGB/addressable — no WS2812B on M5StickC Plus2). Notification flash is a graceful no-op if LED strip init fails.
 - **Time sync**: No WiFi/NTP. Host daemon sends epoch + POSIX timezone string over BLE on each connect (`set_time` action).
 
 ## TODO Tracking
