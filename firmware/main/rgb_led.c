@@ -7,7 +7,7 @@
 
 static const char *TAG = "rgb_led";
 
-#define RGB_LED_GPIO    8
+#define RGB_LED_GPIO    19   // M5StickC Plus2 internal LED (not RGB — on/off only; WS2812B not present)
 #define STEP_MS         30   /* timer period */
 
 static led_strip_handle_t s_strip = NULL;
@@ -89,9 +89,10 @@ void rgb_led_init(void)
         .flags.with_dma = false,
     };
 
-    esp_err_t err = led_strip_new_rmt_device(&strip_config, &rmt_config, &s_strip);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to init LED strip: %s", esp_err_to_name(err));
+    esp_err_t ret = led_strip_new_rmt_device(&strip_config, &rmt_config, &s_strip);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "LED strip init failed (no WS2812B on this hardware): %s", esp_err_to_name(ret));
+        s_strip = NULL;
         return;
     }
 
