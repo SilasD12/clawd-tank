@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Clawd Tank is a physical notification display for Claude Code sessions. It runs on a **Waveshare ESP32-C6-LCD-1.47** (320x172 ST7789 SPI display) and shows an animated pixel-art crab ("Clawd") alongside notification cards received over BLE from a Python host daemon.
+Clawd Tank is a physical notification display for Claude Code sessions. It runs on a **M5StickC Plus2** (240x135 ST7789V2 SPI display) and shows an animated pixel-art crab ("Clawd") alongside notification cards received over BLE from a Python host daemon.
 
 Three components: **firmware** (ESP-IDF C), **simulator** (native macOS), **host** (Python daemon + Claude Code hooks).
 
@@ -193,8 +193,8 @@ The daemon tracks per-session state and computes display state sent to the devic
 
 ## Key Constraints
 
-- **Display**: 320x172 pixels, 16-bit RGB565, SPI. All UI must fit this resolution.
-- **Target chip**: ESP32-C6FH8 (RISC-V, single core). 8MB flash, no PSRAM. ~512 KB internal SRAM (~200 KB free heap after IDF/BLE/LVGL).
+- **Display**: 240x135 pixels, 16-bit RGB565, SPI. All UI must fit this resolution.
+- **Target chip**: ESP32-PICO-V3-02 (Xtensa dual-core). 8MB flash, 2MB PSRAM.
 - **BLE MTU**: 256 bytes. Notification JSON payloads must stay under this limit.
 - **Notification limit**: 8 simultaneous (ring buffer, oldest dropped on overflow).
 - **LVGL version**: 9.5.0 (not 8.x — API differs significantly).
