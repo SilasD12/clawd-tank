@@ -1,5 +1,4 @@
-# firmware/main/idf_component.yml
+# firmware/src/idf_component.yml
 dependencies:
   lvgl/lvgl: "^9.2"
   espressif/led_strip: "^2.5"
-  idf: ">=5.3"

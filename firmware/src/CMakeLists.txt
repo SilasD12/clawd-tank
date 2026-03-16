@@ -1,4 +1,4 @@
-# firmware/main/CMakeLists.txt
+# firmware/src/CMakeLists.txt
 idf_component_register(
     SRCS "main.c" "display.c" "ble_service.c" "notification.c" "ui_manager.c" "scene.c" "notification_ui.c" "config_store.c" "rgb_led.c" "pixel_font.c"
     INCLUDE_DIRS "."
