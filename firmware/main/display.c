@@ -14,19 +14,19 @@
 
 static const char *TAG = "display";
 
-// Waveshare ESP32-C6-LCD-1.47 pin definitions
-#define PIN_MOSI    6
-#define PIN_SCLK    7
-#define PIN_CS      14
-#define PIN_DC      15
-#define PIN_RST     21
-#define PIN_BL      22
+// M5StickC Plus2 pin definitions
+#define PIN_MOSI    15
+#define PIN_SCLK    13
+#define PIN_CS      5
+#define PIN_DC      14
+#define PIN_RST     12
+#define PIN_BL      27
 
 // Display config
-#define LCD_HOST        SPI2_HOST
-#define LCD_PIXEL_CLK   (12 * 1000 * 1000)
-#define LCD_H_RES       320   // landscape width
-#define LCD_V_RES       172   // landscape height
+#define LCD_HOST        SPI3_HOST
+#define LCD_PIXEL_CLK   (20 * 1000 * 1000)  // 20 MHz — reduce to 12 if display artifacts appear
+#define LCD_H_RES       240   // landscape width
+#define LCD_V_RES       135   // landscape height
 #define LCD_CMD_BITS    8
 #define LCD_PARAM_BITS  8
 #define LVGL_BUF_LINES  20
@@ -82,7 +82,7 @@ lv_display_t *display_init(void) {
     spi_bus_config_t buscfg = {
         .sclk_io_num = PIN_SCLK,
         .mosi_io_num = PIN_MOSI,
-        .miso_io_num = 5,
+        .miso_io_num = -1,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .max_transfer_sz = LCD_H_RES * LVGL_BUF_LINES * sizeof(uint16_t),
@@ -117,10 +117,12 @@ lv_display_t *display_init(void) {
     // Landscape: swap X/Y, then mirror as needed
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel, true));
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel, true, false));
-    // Apply offset for 172-pixel dimension (centered in 240-pixel controller RAM)
-    // With swap_xy=true, CASET addresses rows and RASET addresses columns,
-    // so the 34-pixel column offset must go on y_gap, not x_gap.
-    ESP_ERROR_CHECK(esp_lcd_panel_set_gap(panel, 0, 34));
+    // Apply offset for M5StickC Plus2 135x240 panel in landscape
+    // With swap_xy=true, x_gap=40 (320-240)/2, y_gap=52 (240-135)/2.
+    // NOTE: These values may need empirical tuning on actual hardware.
+    // If display shows offset/flipped content, try: gap(40,53), mirror(true,true),
+    // or mirror(false,true). If colors wrong, try LCD_RGB_ELEMENT_ORDER_BGR.
+    ESP_ERROR_CHECK(esp_lcd_panel_set_gap(panel, 40, 52));
 
     // Clear screen to black before turning on backlight
     {
