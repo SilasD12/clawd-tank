@@ -35,12 +35,13 @@
 
 /* ---------- Constants ---------- */
 
-#define SCENE_HEIGHT       172
-#define GRASS_HEIGHT       14
+#define SCENE_HEIGHT       135
+#define GRASS_HEIGHT       11
 #define STAR_COUNT         6
 #define STAR_TWINKLE_MIN   2000
 #define STAR_TWINKLE_MAX   4000
 #define TRANSPARENT_KEY    0x18C5
+#define SCENE_CENTER_X  120  /* half of LCD_H_RES (240) */
 
 /* Frame timing in ms per animation */
 #define IDLE_FRAME_MS      (1000 / 6)   /* 167ms @ 6fps */
@@ -246,12 +247,12 @@ static const struct {
     int x, y, size;
     lv_color_t color;
 } star_cfg[STAR_COUNT] = {
-    { 10,  8, 2, {.red = 0xFF, .green = 0xFF, .blue = 0x88} },  /* #ffff88 */
-    { 45, 15, 3, {.red = 0x88, .green = 0xCC, .blue = 0xFF} },  /* #88ccff */
-    { 80, 22, 2, {.red = 0xFF, .green = 0xAA, .blue = 0x88} },  /* #ffaa88 */
-    {120,  5, 4, {.red = 0xAA, .green = 0xCC, .blue = 0xFF} },  /* #aaccff */
-    {150, 18, 2, {.red = 0xFF, .green = 0xDD, .blue = 0x88} },  /* #ffdd88 */
-    {160, 30, 3, {.red = 0x88, .green = 0xFF, .blue = 0xCC} },  /* #88ffcc */
+    {  8,  6, 2, {.red = 0xFF, .green = 0xFF, .blue = 0x88} },  /* #ffff88 */
+    { 34, 12, 3, {.red = 0x88, .green = 0xCC, .blue = 0xFF} },  /* #88ccff */
+    { 60, 17, 2, {.red = 0xFF, .green = 0xAA, .blue = 0x88} },  /* #ffaa88 */
+    { 90,  4, 3, {.red = 0xAA, .green = 0xCC, .blue = 0xFF} },  /* #aaccff */
+    {112, 14, 2, {.red = 0xFF, .green = 0xDD, .blue = 0x88} },  /* #ffdd88 */
+    {120, 24, 3, {.red = 0x88, .green = 0xFF, .blue = 0xCC} },  /* #88ffcc */
 };
 
 /* ---------- Scene struct ---------- */
@@ -482,7 +483,7 @@ scene_t *scene_create(lv_obj_t *parent)
 
     /* Grass tufts — small lighter rectangles */
     static const struct { int x; int w; } tufts[] = {
-        {8, 3}, {25, 2}, {50, 4}, {78, 2}, {100, 3}, {130, 2}, {155, 3},
+        {6, 2}, {19, 2}, {38, 3}, {59, 2}, {75, 2}, {98, 2}, {116, 2},
     };
     for (int i = 0; i < (int)(sizeof(tufts) / sizeof(tufts[0])); i++) {
         lv_obj_t *tuft = lv_obj_create(s->grass);
@@ -508,7 +509,7 @@ scene_t *scene_create(lv_obj_t *parent)
 
     /* Time label — top-right */
     s->time_label = lv_label_create(s->container);
-    lv_obj_set_style_text_font(s->time_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(s->time_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(s->time_label, lv_color_hex(0x4466aa), 0);
     lv_obj_align(s->time_label, LV_ALIGN_TOP_MID, 0, 4);
     lv_label_set_text(s->time_label, "");
@@ -524,15 +525,15 @@ scene_t *scene_create(lv_obj_t *parent)
 
     /* HUD: subagent counter canvas (top-left) — sized for 2x mini-crab (20x14) + text */
     s->hud_canvas = lv_canvas_create(s->container);
-    static uint8_t hud_buf[80 * 16 * 4];
-    lv_canvas_set_buffer(s->hud_canvas, hud_buf, 80, 16, LV_COLOR_FORMAT_ARGB8888);
+    static uint8_t hud_buf[60 * 14 * 4];
+    lv_canvas_set_buffer(s->hud_canvas, hud_buf, 60, 14, LV_COLOR_FORMAT_ARGB8888);
     lv_obj_align(s->hud_canvas, LV_ALIGN_TOP_LEFT, 4, 2);
     lv_obj_add_flag(s->hud_canvas, LV_OBJ_FLAG_HIDDEN);
 
     /* HUD: overflow/total badge canvas (top-right of SCREEN, not container) */
     s->hud_badge_canvas = lv_canvas_create(lv_screen_active());
-    static uint8_t badge_buf[48 * 12 * 4];
-    lv_canvas_set_buffer(s->hud_badge_canvas, badge_buf, 48, 12, LV_COLOR_FORMAT_ARGB8888);
+    static uint8_t badge_buf[36 * 10 * 4];
+    lv_canvas_set_buffer(s->hud_badge_canvas, badge_buf, 36, 10, LV_COLOR_FORMAT_ARGB8888);
     lv_obj_align(s->hud_badge_canvas, LV_ALIGN_TOP_RIGHT, -1, 4);
     lv_obj_add_flag(s->hud_badge_canvas, LV_OBJ_FLAG_HIDDEN);
 
@@ -547,10 +548,10 @@ scene_t *scene_create(lv_obj_t *parent)
 /* ---------- Multi-session X positions ---------- */
 
 static const int x_centers[][4] = {
-    {160},              /* 1 session */
-    {107, 213},         /* 2 sessions */
-    {80, 160, 240},     /* 3 sessions */
-    {64, 128, 192, 256} /* 4 sessions */
+    {120},              /* 1 session: center */
+    { 80, 160},         /* 2 sessions */
+    { 60, 120, 180},    /* 3 sessions */
+    { 48,  96, 144, 192} /* 4 sessions */
 };
 
 /* Forward declarations — defined after scene_set_width */
@@ -564,7 +565,7 @@ void scene_set_width(scene_t *scene, int width_px, int anim_ms)
     if (!scene) return;
 
     bool was_narrow = scene->narrow;
-    scene->narrow = (width_px < 320);
+    scene->narrow = (width_px < 240);
 
     /* In narrow mode, hide all slots except 0; restore when going wide */
     if (scene->narrow && !was_narrow) {
@@ -636,7 +637,7 @@ void scene_set_width(scene_t *scene, int width_px, int anim_ms)
             if (!scene->slots[i].active || !scene->slots[i].sprite_img) continue;
             if (i > 0) lv_obj_clear_flag(scene->slots[i].sprite_img, LV_OBJ_FLAG_HIDDEN);
 
-            int target_x_off = (cnt >= 2) ? x_centers[cnt - 1][i] - 160 : 0;
+            int target_x_off = (cnt >= 2) ? x_centers[cnt - 1][i] - SCENE_CENTER_X : 0;
             int old_x_off = scene->slots[i].x_off;
             scene->slots[i].x_off = target_x_off;
 
@@ -797,7 +798,7 @@ void scene_tick(scene_t *scene)
                                 for (int r = 0; r < cnt; r++) {
                                     clawd_slot_t *rs = &scene->slots[r];
                                     if (!rs->active || !rs->sprite_img || rs->walking_in) continue;
-                                    int target = (cnt >= 2) ? x_centers[cnt - 1][r] - 160 : 0;
+                                    int target = (cnt >= 2) ? x_centers[cnt - 1][r] - SCENE_CENTER_X : 0;
                                     int cur = rs->x_off;
                                     if (cur == target) continue;
                                     rs->x_off = target;
@@ -1107,10 +1108,10 @@ void scene_set_sessions(scene_t *s, const uint8_t *anims, const uint16_t *ids,
      * Positioning: use lv_obj_align(BOTTOM_MID) for correct Y placement
      * (feet in grass). For multiple sessions, x_off distributes them
      * across the container. x_centers[] are absolute pixel positions
-     * assuming 320px width; convert to offsets from center (160). */
+     * assuming 240px width; convert to offsets from center (120). */
     for (int new_i = 0; new_i < count; new_i++) {
         int old_i = find_id_in(old_ids, old_count, ids[new_i]);
-        int x_off = x_centers[count - 1][new_i] - 160;
+        int x_off = x_centers[count - 1][new_i] - SCENE_CENTER_X;
         if (old_i >= 0 && old_slots[old_i].active) {
             /* Existing session — move slot data, update animation if changed */
             s->slots[new_i] = old_slots[old_i];
@@ -1180,8 +1181,8 @@ void scene_set_sessions(scene_t *s, const uint8_t *anims, const uint16_t *ids,
              *
              * LVGL 9 coordinate model: lv_obj_set_x/set_pos set OFFSETS
              * from the alignment anchor (LV_ALIGN_BOTTOM_MID), not absolute
-             * pixel positions. So x=0 means "at center", x=250 means
-             * "250px right of center" (off-screen on a 320px display). */
+             * pixel positions. So x=0 means "at center", x=180 means
+             * "180px right of center" (off-screen on a 240px display). */
             scene_activate_slot(s, new_i, CLAWD_ANIM_WALKING);
             s->slots[new_i].display_id = ids[new_i];
             s->slots[new_i].x_off = x_off;
@@ -1189,7 +1190,7 @@ void scene_set_sessions(scene_t *s, const uint8_t *anims, const uint16_t *ids,
 
             /* Start off-screen right: large positive X offset from BOTTOM_MID.
              * Y stays as y_offset (already set by scene_activate_slot's align). */
-            int start_x_off = 250;  /* well past right edge from center */
+            int start_x_off = 180;  /* well past right edge from center on 240px display */
             lv_obj_set_x(s->slots[new_i].sprite_img, start_x_off);
 
             /* Target X is just the alignment offset for this slot position */
