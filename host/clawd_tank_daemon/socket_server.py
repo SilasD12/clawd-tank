@@ -10,6 +10,7 @@ from typing import Callable, Awaitable
 logger = logging.getLogger("clawd-tank.socket")
 
 SOCKET_PATH = Path.home() / ".clawd-tank" / "sock"
+SOCKET_READ_TIMEOUT_SECS = 5.0
 
 
 class SocketServer:
@@ -38,7 +39,7 @@ class SocketServer:
         # Messages are newline-delimited JSON. readline() gives a clean
         # message boundary regardless of TCP/socket buffering.
         try:
-            line = await asyncio.wait_for(reader.readline(), timeout=5.0)
+            line = await asyncio.wait_for(reader.readline(), timeout=SOCKET_READ_TIMEOUT_SECS)
             if line:
                 try:
                     msg = json.loads(line.decode("utf-8"))

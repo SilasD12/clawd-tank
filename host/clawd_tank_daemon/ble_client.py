@@ -7,6 +7,8 @@ from bleak import BleakClient, BleakScanner
 
 logger = logging.getLogger("clawd-tank.ble")
 
+DEVICE_NAME = "Clawd Tank"
+BLE_MTU_SIZE = 256
 SERVICE_UUID = "aecbefd9-98a2-4773-9fed-bb2166daa49a"
 NOTIFICATION_CHR_UUID = "71ffb137-8b7a-47c9-9a7a-4b1b16662d9a"
 CONFIG_CHR_UUID = "e9f6e626-5fca-4201-b80c-4d2b51c40f51"
@@ -34,7 +36,7 @@ class ClawdBleClient:
         while True:
             logger.info("Scanning for Clawd Tank device...")
             device = await BleakScanner.find_device_by_name(
-                "Clawd Tank", timeout=SCAN_INTERVAL_SECS
+                DEVICE_NAME, timeout=SCAN_INTERVAL_SECS
             )
             if device is None:
                 logger.debug("Clawd Tank not found, retrying...")
@@ -47,6 +49,12 @@ class ClawdBleClient:
                     disconnected_callback=self._on_disconnect,
                 )
                 await client.connect()
+                # Negotiate higher MTU (Linux/BlueZ backend private API)
+                try:
+                    await client._backend._acquire_mtu()
+                    logger.info("MTU negotiated to %d (target: %d)", client.mtu_size, BLE_MTU_SIZE)
+                except Exception as e:
+                    logger.warning("MTU negotiation failed: %s", e)
                 self._client = client
                 logger.info("Connected to Clawd Tank (MTU: %d)", client.mtu_size)
                 if self._on_connect_cb:

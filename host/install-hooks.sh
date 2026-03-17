@@ -51,6 +51,30 @@ HOOKS_JSON=$(cat <<ENDJSON
         }
       ]
     }
+  ],
+  "Stop": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "$CLAWD_NOTIFY"
+        },
+        {
+          "type": "command",
+          "command": "python3 ~/.claude/hooks/notify-swaync.py"
+        }
+      ]
+    }
+  ],
+  "PermissionRequest": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "python3 ~/.claude/hooks/notify-swaync.py"
+        }
+      ]
+    }
   ]
 }
 ENDJSON

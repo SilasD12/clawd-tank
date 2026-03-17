@@ -6,6 +6,7 @@
 #include "esp_lcd_panel_vendor.h"
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
+#include <string.h>
 #include "esp_timer.h"
 #include "esp_log.h"
 #include "driver/ledc.h"
@@ -21,10 +22,12 @@ static const char *TAG = "display";
 #define PIN_DC      14
 #define PIN_RST     12
 #define PIN_BL      27
+#define PIN_POWER_HOLD 4
 
 // Display config
-#define LCD_HOST        SPI3_HOST
-#define LCD_PIXEL_CLK   (20 * 1000 * 1000)  // 20 MHz — reduce to 12 if display artifacts appear
+#define LCD_HOST            SPI3_HOST
+#define LCD_SPI_QUEUE_DEPTH 10
+#define LCD_PIXEL_CLK   (8 * 1000 * 1000)  // 8 MHz - ultra safe for testing
 #define LCD_H_RES       240   // landscape width
 #define LCD_V_RES       135   // landscape height
 #define LCD_CMD_BITS    8
@@ -59,26 +62,21 @@ static void lvgl_tick_cb(void *arg) {
 lv_display_t *display_init(void) {
     ESP_LOGI(TAG, "Initializing display...");
 
-    // PWM backlight via LEDC — keep duty low to reduce heat
-    ledc_timer_config_t bl_timer = {
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .duty_resolution = LEDC_TIMER_8_BIT,
-        .timer_num = LEDC_TIMER_0,
-        .freq_hz = 5000,
-        .clk_cfg = LEDC_AUTO_CLK,
-    };
-    ESP_ERROR_CHECK(ledc_timer_config(&bl_timer));
-    ledc_channel_config_t bl_channel = {
-        .gpio_num = PIN_BL,
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .channel = LEDC_CHANNEL_0,
-        .timer_sel = LEDC_TIMER_0,
-        .duty = 0,  // off during init
-        .hpoint = 0,
-    };
-    ESP_ERROR_CHECK(ledc_channel_config(&bl_channel));
+    // 1. Backlight — set to normal GPIO HIGH for MAX BRIGHTNESS
+    gpio_reset_pin(PIN_BL);
+    gpio_set_direction(PIN_BL, GPIO_MODE_OUTPUT);
+    gpio_set_level(PIN_BL, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
 
-    // SPI bus
+    // 2. Hardware Reset
+    gpio_reset_pin(PIN_RST);
+    gpio_set_direction(PIN_RST, GPIO_MODE_OUTPUT);
+    gpio_set_level(PIN_RST, 0);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    gpio_set_level(PIN_RST, 1);
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    // 3. SPI bus
     spi_bus_config_t buscfg = {
         .sclk_io_num = PIN_SCLK,
         .mosi_io_num = PIN_MOSI,
@@ -89,7 +87,7 @@ lv_display_t *display_init(void) {
     };
     ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
-    // Panel I/O
+    // 4. Panel I/O
     esp_lcd_panel_io_handle_t io_handle = NULL;
     esp_lcd_panel_io_spi_config_t io_config = {
         .dc_gpio_num = PIN_DC,
@@ -98,14 +96,14 @@ lv_display_t *display_init(void) {
         .lcd_cmd_bits = LCD_CMD_BITS,
         .lcd_param_bits = LCD_PARAM_BITS,
         .spi_mode = 0,
-        .trans_queue_depth = 10,
+        .trans_queue_depth = LCD_SPI_QUEUE_DEPTH,
     };
-    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(LCD_HOST, &io_config, &io_handle));
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &io_handle));
 
-    // ST7789 panel
+    // 5. ST7789 panel
     esp_lcd_panel_handle_t panel = NULL;
     esp_lcd_panel_dev_config_t panel_config = {
-        .reset_gpio_num = PIN_RST,
+        .reset_gpio_num = -1, // manual reset
         .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
         .bits_per_pixel = 16,
     };
@@ -117,41 +115,53 @@ lv_display_t *display_init(void) {
     // Landscape: swap X/Y, then mirror as needed
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel, true));
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel, true, false));
-    // Apply offset for M5StickC Plus2 135x240 panel in landscape
-    // With swap_xy=true, x_gap=40 (320-240)/2, y_gap=52 (240-135)/2.
-    // NOTE: These values may need empirical tuning on actual hardware.
-    // If display shows offset/flipped content, try: gap(40,53), mirror(true,true),
-    // or mirror(false,true). If colors wrong, try LCD_RGB_ELEMENT_ORDER_BGR.
+    // Correct offsets for M5StickC Plus2 135x240
     ESP_ERROR_CHECK(esp_lcd_panel_set_gap(panel, 40, 52));
 
-    // Clear screen to black before turning on backlight
+    // 6. CLEAR SCREEN TO WHITE (FORCE VISIBILITY)
     {
         size_t clear_sz = LCD_H_RES * LVGL_BUF_LINES * sizeof(uint16_t);
         void *clear_buf = heap_caps_calloc(1, clear_sz, MALLOC_CAP_DMA);
         configASSERT(clear_buf);
+        memset(clear_buf, 0xFF, clear_sz); // WHITE
         for (int y = 0; y < LCD_V_RES; y += LVGL_BUF_LINES) {
             int h = (y + LVGL_BUF_LINES <= LCD_V_RES) ? LVGL_BUF_LINES : (LCD_V_RES - y);
             esp_lcd_panel_draw_bitmap(panel, 0, y, LCD_H_RES, y + h, clear_buf);
         }
-        // Wait for all queued SPI DMA transfers to complete before freeing
         vTaskDelay(pdMS_TO_TICKS(100));
         free(clear_buf);
     }
 
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, config_store_get_brightness());
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    
+    // 7. Initialize LEDC (PWM) at MAX for testing
+    ledc_timer_config_t bl_timer = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_8_BIT,
+        .timer_num = LEDC_TIMER_0,
+        .freq_hz = 10000,
+        .clk_cfg = LEDC_AUTO_CLK,
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&bl_timer));
+    ledc_channel_config_t bl_channel = {
+        .gpio_num = PIN_BL,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = LEDC_CHANNEL_0,
+        .timer_sel = LEDC_TIMER_0,
+        .duty = 255, // FORCED MAX
+        .hpoint = 0,
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&bl_channel));
 
-    // LVGL init
+    // 8. LVGL init
     lv_init();
 
     lv_display_t *display = lv_display_create(LCD_H_RES, LCD_V_RES);
     if (!display) {
-        ESP_LOGE(TAG, "lv_display_create failed — out of memory");
+        ESP_LOGE(TAG, "lv_display_create failed");
         abort();
     }
 
-    // DMA buffers
     size_t buf_sz = LCD_H_RES * LVGL_BUF_LINES * sizeof(lv_color16_t);
     void *buf1 = heap_caps_malloc(buf_sz, MALLOC_CAP_DMA);
     void *buf2 = heap_caps_malloc(buf_sz, MALLOC_CAP_DMA);
@@ -163,13 +173,11 @@ lv_display_t *display_init(void) {
     lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
     lv_display_set_flush_cb(display, lvgl_flush_cb);
 
-    // DMA done -> flush ready callback
     const esp_lcd_panel_io_callbacks_t cbs = {
         .on_color_trans_done = notify_lvgl_flush_ready,
     };
     ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, display));
 
-    // LVGL tick timer
     const esp_timer_create_args_t tick_args = {
         .callback = &lvgl_tick_cb,
         .name = "lvgl_tick",
@@ -178,7 +186,7 @@ lv_display_t *display_init(void) {
     ESP_ERROR_CHECK(esp_timer_create(&tick_args, &tick_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(tick_timer, LVGL_TICK_MS * 1000));
 
-    ESP_LOGI(TAG, "Display initialized: %dx%d landscape", LCD_H_RES, LCD_V_RES);
+    ESP_LOGI(TAG, "Display initialized: %dx%d landscape (TEST MODE WHITE)", LCD_H_RES, LCD_V_RES);
     return display;
 }
 

@@ -5,6 +5,7 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "driver/gpio.h"
 #include "display.h"
 #include "ble_service.h"
 #include "ui_manager.h"
@@ -13,7 +14,10 @@
 
 static const char *TAG = "clawd-tank";
 
-#define EVT_QUEUE_LEN 16
+#define EVT_QUEUE_LEN       16
+#define UI_TASK_STACK_SIZE  8192
+#define UI_TASK_PRIORITY    5
+#define PIN_POWER_HOLD      4
 
 static QueueHandle_t s_evt_queue;
 
@@ -35,7 +39,12 @@ static void ui_task(void *arg) {
 }
 
 void app_main(void) {
-    ESP_LOGI(TAG, "Clawd Tank starting...");
+    // 0. Hold power immediately (Critical for M5StickC Plus2)
+    gpio_reset_pin(PIN_POWER_HOLD);
+    gpio_set_direction(PIN_POWER_HOLD, GPIO_MODE_OUTPUT);
+    gpio_set_level(PIN_POWER_HOLD, 1);
+    
+    ESP_LOGI(TAG, "Clawd Tank starting (Power Hold Active)...");
 
     // Create event queue (BLE -> UI)
     s_evt_queue = xQueueCreate(EVT_QUEUE_LEN, sizeof(ble_evt_t));
@@ -57,7 +66,7 @@ void app_main(void) {
     ble_service_init(s_evt_queue);
 
     // Start UI task
-    BaseType_t ret = xTaskCreate(ui_task, "ui_task", 8192, NULL, 5, NULL);
+    BaseType_t ret = xTaskCreate(ui_task, "ui_task", UI_TASK_STACK_SIZE, NULL, UI_TASK_PRIORITY, NULL);
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create ui_task");
         abort();

@@ -24,6 +24,11 @@ logger = logging.getLogger("clawd-tank")
 PID_PATH = Path.home() / ".clawd-tank" / "daemon.pid"
 LOCK_PATH = Path.home() / ".clawd-tank" / "daemon.lock"
 
+MAX_VISIBLE_SESSIONS = 4
+SESSION_STALENESS_TIMEOUT_SECS = 600.0
+STALENESS_CHECK_INTERVAL_SECS = 30
+REPLAY_INTER_MSG_SECS = 0.05
+
 
 @runtime_checkable
 class DaemonObserver(Protocol):
@@ -132,7 +137,7 @@ class ClawdDaemon:
         self._next_display_id: int = loaded_next_id
         self._last_display_state: dict = {"status": "sleeping"}
         self._transport_versions: dict[str, int] = {}  # transport_name → protocol version
-        self._session_staleness_timeout: float = 600.0
+        self._session_staleness_timeout: float = SESSION_STALENESS_TIMEOUT_SECS
         self._evict_stale_sessions()
 
     async def _handle_message(self, msg: dict) -> None:
@@ -206,7 +211,7 @@ class ClawdDaemon:
             len(s.get("subagents", set())) for s in self._session_states.values()
         )
 
-        for session_id, display_id in self._session_order[:4]:
+        for session_id, display_id in self._session_order[:MAX_VISIBLE_SESSIONS]:
             state = self._session_states.get(session_id)
             if state is None:
                 continue
@@ -229,8 +234,8 @@ class ClawdDaemon:
             return {"status": "sleeping"}
 
         result = {"anims": anims, "ids": ids, "subagents": total_subagents}
-        if len(self._session_order) > 4:
-            result["overflow"] = len(self._session_order) - 4
+        if len(self._session_order) > MAX_VISIBLE_SESSIONS:
+            result["overflow"] = len(self._session_order) - MAX_VISIBLE_SESSIONS
         return result
 
     def _update_session_state(self, event: str, hook: str, session_id: str, agent_id: str = "") -> bool:
@@ -337,7 +342,7 @@ class ClawdDaemon:
 
     async def _staleness_checker(self) -> None:
         while self._running:
-            await asyncio.sleep(30)
+            await asyncio.sleep(STALENESS_CHECK_INTERVAL_SECS)
             self._evict_stale_sessions()
             await self._broadcast_display_state_if_changed()
 
@@ -400,7 +405,7 @@ class ClawdDaemon:
             if payload is None:
                 continue
             await transport.write_notification(payload)
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(REPLAY_INTER_MSG_SECS)
 
         # Send current display state
         state = self._compute_display_state()
@@ -569,19 +574,30 @@ class ClawdDaemon:
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Clawd Tank daemon")
+    parser.add_argument("--ble", action="store_true", default=True,
+                        help="Enable BLE transport (default: true)")
     parser.add_argument("--sim", action="store_true",
                         help="Enable simulator transport (BLE + TCP)")
     parser.add_argument("--sim-only", action="store_true",
                         help="Simulator only (no BLE)")
     parser.add_argument("--sim-port", type=int, default=SIM_DEFAULT_PORT,
                         help=f"Simulator TCP port (default: {SIM_DEFAULT_PORT})")
+    parser.add_argument("--takeover", action="store_true",
+                        help="Stop existing daemon and take over")
     args = parser.parse_args()
 
     sim_port = 0
     if args.sim or args.sim_only or args.sim_port != SIM_DEFAULT_PORT:
         sim_port = args.sim_port
 
-    daemon = ClawdDaemon(sim_port=sim_port, sim_only=args.sim_only)
+    # Use args.sim_only to override args.ble if provided
+    ble_enabled = args.ble and not args.sim_only
+
+    daemon = ClawdDaemon(
+        sim_port=sim_port, 
+        sim_only=not ble_enabled,
+        headless=not args.takeover
+    )
     asyncio.run(daemon.run())
 
 

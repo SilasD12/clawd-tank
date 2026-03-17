@@ -19,6 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 CLAWD_DIR = Path.home() / ".clawd-tank"
 PID_PATH = CLAWD_DIR / "daemon.pid"
 SOCKET_PATH = CLAWD_DIR / "sock"
+SOCKET_TIMEOUT_SECS = 3.0
+DAEMON_START_WAIT_SECS = 5.0
 
 
 def is_daemon_running() -> bool:
@@ -43,7 +45,7 @@ def start_daemon() -> None:
     # with block so it is closed promptly even if Popen raises.
     with open(CLAWD_DIR / "daemon.log", "a") as log_file:
         subprocess.Popen(
-            [sys.executable, "-m", "clawd_tank_daemon.daemon"],
+            [str(Path(__file__).parent / ".venv" / "bin" / "python3"), "-m", "clawd_tank_daemon.daemon"],
             cwd=str(Path(__file__).parent),
             stdout=log_file,
             stderr=subprocess.STDOUT,
@@ -51,10 +53,11 @@ def start_daemon() -> None:
         )
 
     # Wait for socket to appear
-    for _ in range(50):  # 5 seconds max
+    poll_interval = 0.1
+    for _ in range(int(DAEMON_START_WAIT_SECS / poll_interval)):
         if SOCKET_PATH.exists():
             return
-        time.sleep(0.1)
+        time.sleep(poll_interval)
 
     print("Warning: daemon may not have started", file=sys.stderr)
 
@@ -69,7 +72,7 @@ def send_to_daemon(payload: dict) -> None:
 
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
-        sock.settimeout(3.0)
+        sock.settimeout(SOCKET_TIMEOUT_SECS)
         sock.connect(str(SOCKET_PATH))
         # Messages are newline-delimited so the server can use readline()
         # for a reliable message boundary.
