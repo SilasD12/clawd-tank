@@ -6,7 +6,7 @@
 
 A tiny desktop aquarium for your Claude Code sessions.
 
-Clawd Tank is a notification display for Claude Code built on a [Waveshare ESP32-C6-LCD-1.47](https://s.click.aliexpress.com/e/_c4PGS55v) (320x172 ST7789). An animated pixel-art crab named Clawd lives on the screen, reacting to your coding session — alerting on new notifications, celebrating when you dismiss them, and sleeping when you're away.
+Clawd Tank is a notification display for Claude Code built on a [M5StickC Plus2](https://docs.m5stack.com/en/core/M5StickC%20PLUS2) (240x135 ST7789V2). An animated pixel-art crab named Clawd lives on the screen, reacting to your coding session — alerting on new notifications, celebrating when you dismiss them, and sleeping when you're away.
 
 **No hardware? No problem.** The simulator runs natively on macOS and ships bundled inside the Menu Bar app. Download it from [Releases](https://github.com/marciogranzotto/clawd-tank/releases) — no build tools needed.
 
@@ -38,10 +38,10 @@ Claude Code hooks --> clawd-tank-notify --> daemon --> BLE --> ESP32-C6 display
 
 ## Hardware
 
-- **Board**: [Waveshare ESP32-C6-LCD-1.47](https://s.click.aliexpress.com/e/_c4PGS55v)
-- **Display**: 1.47" 320x172 ST7789V (SPI), 16-bit RGB565
-- **SoC**: ESP32-C6FH8 (RISC-V, single core), 8MB flash, 512KB SRAM (no PSRAM)
-- **RGB LED**: Onboard WS2812B on GPIO8 — flashes on incoming notifications
+- **Board**: [M5StickC Plus2](https://docs.m5stack.com/en/core/M5StickC%20PLUS2)
+- **Display**: 1.14" 240x135 ST7789V2 (SPI), 16-bit RGB565
+- **SoC**: ESP32-PICO-V3-02, dual-core Xtensa LX6, 8MB flash, 2MB PSRAM
+- **LED**: Internal LED on GPIO 19 — flashes on incoming notifications
 - **Connectivity**: BLE 5.0 (NimBLE, peripheral role)
 
 ## Quick Start
@@ -146,7 +146,7 @@ The daemon auto-starts on the first hook event. Logs at `~/.clawd-tank/daemon.lo
 - **Session tracking** — daemon tracks per-session state with priority-based display resolution, staleness eviction, and subagent lifecycle tracking
 - **Session persistence** — session state survives daemon restarts, so relaunching the app immediately shows the correct animation for running sessions
 - **Time display** — synced from host over BLE on connect (no WiFi/NTP needed)
-- **RGB LED flash** — onboard WS2812B cycles through colors on new notifications
+- **LED flash** — onboard LED flashes on new notifications
 - **RLE sprite compression** — all sprite assets compressed ~14:1 (13MB raw → ~900KB)
 - **Bundled simulator** — macOS `.app` ships with the simulator binary, no hardware needed. Borderless resizable window with integer pixel scaling
 - **Multi-transport** — daemon supports BLE (hardware) and TCP (simulator) transports simultaneously, independently enable/disable
