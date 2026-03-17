@@ -6,7 +6,7 @@
 
 A tiny desktop aquarium for your Claude Code sessions.
 
-Clawd Tank is a notification display for Claude Code built on a [M5StickC Plus2](https://docs.m5stack.com/en/core/M5StickC%20PLUS2) (240x135 ST7789V2). An animated pixel-art crab named Clawd lives on the screen, reacting to your coding session — alerting on new notifications, celebrating when you dismiss them, and sleeping when you're away.
+Clawd Tank is a notification display for Claude Code built on (originally) on a Waveshare ESP32-C6-LCD-1.47 by marciogranzotto. I adapted it to fit and work on a [M5StickC Plus2](https://docs.m5stack.com/en/core/M5StickC%20PLUS2) with a (240x135 ST7789V2) screen. An animated pixel-art crab named Clawd lives on the screen, reacting to your coding session — alerting on new notifications, celebrating when you dismiss them, and sleeping when you're away.
 
 **No hardware? No problem.** The simulator runs natively on macOS and ships bundled inside the Menu Bar app. Download it from [Releases](https://github.com/marciogranzotto/clawd-tank/releases) — no build tools needed.
 
